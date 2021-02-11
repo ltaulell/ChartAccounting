@@ -15,9 +15,9 @@ create table IF NOT EXISTS groupes (
     group_name varchar(255) NOT NULL UNIQUE
     );
 
-create table IF NOT EXISTS metagroups (
-    id_metagroup bigserial PRIMARY KEY,
-    metaname varchar(255) NOT NULL UNIQUE
+create table IF NOT EXISTS metagroupes (
+    id_metagroupe bigserial PRIMARY KEY,
+    meta_name varchar(255) NOT NULL UNIQUE
     );
 
 create table IF NOT EXISTS clusters (
@@ -31,7 +31,7 @@ create table IF NOT EXISTS queues (
     );
 
 -- liaison users/groupes
-create table IF NOT EXISTS users_in_groupe (
+create table IF NOT EXISTS users_in_groupes (
     id_groupe bigint NOT NULL,
     id_user bigint NOT NULL,
     PRIMARY KEY (id_groupe, id_user),
@@ -40,7 +40,7 @@ create table IF NOT EXISTS users_in_groupe (
     );
 
 -- liaison hosts/queues
-create table IF NOT EXISTS hosts_in_queue (
+create table IF NOT EXISTS hosts_in_queues (
     id_queue bigint NOT NULL,
     id_host bigint NOT NULL,
     PRIMARY KEY (id_queue, id_host),
@@ -49,7 +49,7 @@ create table IF NOT EXISTS hosts_in_queue (
     );
 
 -- liaison hosts/clusters
-create table IF NOT EXISTS hosts_in_cluster (
+create table IF NOT EXISTS hosts_in_clusters (
     id_cluster bigint NOT NULL,
     id_host bigint NOT NULL,
     PRIMARY KEY (id_cluster, id_host),
@@ -57,21 +57,21 @@ create table IF NOT EXISTS hosts_in_cluster (
     FOREIGN KEY (id_host) REFERENCES hosts (id_host)
     );
 
--- liaison group/metagroups
-create table IF NOT EXISTS groupe_in_meta (
-    id_metagroup bigint NOT NULL,
+-- liaison groupes/metagroupes
+create table IF NOT EXISTS groupes_in_metagroupes (
+    id_metagroupe bigint NOT NULL,
     id_groupe bigint NOT NULL,
-    PRIMARY KEY (id_metagroup, id_groupe),
-    FOREIGN KEY (id_metagroup) REFERENCES metagroups (id_metagroup),
+    PRIMARY KEY (id_metagroupe, id_groupe),
+    FOREIGN KEY (id_metagroupe) REFERENCES metagroupes (id_metagroupe),
     FOREIGN KEY (id_groupe) REFERENCES groupes (id_groupe)
     );
 
--- liaison user/metagroups
-create table IF NOT EXISTS user_in_meta (
-    id_metagroup bigint NOT NULL,
+-- liaison users/metagroupes
+create table IF NOT EXISTS users_in_metagroupes (
+    id_metagroupe bigint NOT NULL,
     id_user bigint NOT NULL,
-    PRIMARY KEY (id_metagroup, id_user),
-    FOREIGN KEY (id_metagroup) REFERENCES metagroups (id_metagroup),
+    PRIMARY KEY (id_metagroupe, id_user),
+    FOREIGN KEY (id_metagroupe) REFERENCES metagroupes (id_metagroupe),
     FOREIGN KEY (id_user) REFERENCES users (id_user)
     );
 

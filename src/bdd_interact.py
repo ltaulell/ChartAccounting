@@ -152,7 +152,7 @@ class BddTransaction(object):
                                 raise Exception('Erreur lors de liaison foreign key')
 
                 if(len(tables[1]) > 1):
-                    query = ("""INSERT INTO {table}({column}) VALUES%s;""").format(table=tables[0], column=column)  # Dans la requete slq, les données sont pas dans un tuple d'où %s
+                    query = ("""INSERT INTO {table}({column}) VALUES%s;""").format(table=tables[0], column=column)  # Dans la requete sql, les données sont pas dans un tuple d'où %s
 
                     vlue = tuple(fkValue) + tuple(v)  # concaténation des id et des valeurs des colonnes
                     try:
@@ -168,7 +168,7 @@ class BddTransaction(object):
                     try:
                         cur.execute(query, (vlue, ))
                     except(psycopg2.errors.UniqueViolation):
-                        pass  # Nous le savons, plusieurs meme utilisateur ou groupes ou autre effectue un job, dans notre bdd user..., nous ne voulons que notre utilisateurs se retrouve une seule fois, donc si nous tentons de la rajouter une autre fois, nous ne relevons pas dexception et nous poursuivons le programme
+                        pass  # Nous le savons, plusieurs meme utilisateur ou groupes ou autre effectue un job, dans notre bdd user..., nous ne voulons que notre utilisateur se retrouve une seule fois, donc si nous tentons de la rajouter une autre fois, nous ne relevons pas dexception et nous poursuivons le programme
                     except(Exception) as ex:
                         logging.warning(ex)
 
