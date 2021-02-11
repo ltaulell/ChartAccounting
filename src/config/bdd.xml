@@ -14,7 +14,7 @@
     </table>
     <table name='metagroupes'>
         <column name='id_metagroupe'>bigserial PRIMARY KEY</column>
-        <column name='metaname' data='host'>varchar(255) NOT NULL</column>
+        <column name='meta_name' data='host'>varchar(255) NOT NULL</column>
     </table>
     <table name='clusters'>
         <column name='id_cluster'>bigserial PRIMARY KEY</column>
