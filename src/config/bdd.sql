@@ -1,4 +1,5 @@
-
+-- $Id$
+-- create proper schema
 create table IF NOT EXISTS users (
     id_user bigserial PRIMARY KEY,
     login varchar(255) NOT NULL UNIQUE
