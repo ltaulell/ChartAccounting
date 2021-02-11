@@ -15,6 +15,12 @@ create table IF NOT EXISTS groupes (
     group_name varchar(255) NOT NULL UNIQUE
     );
 
+create table IF NOT EXISTS queues (
+    id_queue bigserial PRIMARY KEY,
+    queue_name  varchar(255) NOT NULL UNIQUE
+    );
+
+-- added tables
 create table IF NOT EXISTS metagroupes (
     id_metagroupe bigserial PRIMARY KEY,
     meta_name varchar(255) NOT NULL UNIQUE
@@ -23,11 +29,6 @@ create table IF NOT EXISTS metagroupes (
 create table IF NOT EXISTS clusters (
     id_cluster bigserial PRIMARY KEY,
     cluster_name varchar(255) NOT NULL UNIQUE
-    );
-
-create table IF NOT EXISTS queues (
-    id_queue bigserial PRIMARY KEY,
-    queue_name  varchar(255) NOT NULL UNIQUE
     );
 
 -- liaison users/groupes
