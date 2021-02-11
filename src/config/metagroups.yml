@@ -29,6 +29,7 @@ metagroups:
     lph
     phys
   autres_ENS:
+    # catchall
     citi
     gate
     ihrim
