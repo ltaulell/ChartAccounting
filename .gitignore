@@ -1,6 +1,7 @@
 # project related
-src/config/infodb.ini
-src/logs/bdd.log
+# add them afterward with git update-index --assume-unchanged <path/to/file>
+infodb.ini
+bdd.log
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
