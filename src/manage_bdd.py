@@ -17,6 +17,7 @@ create, or purge, database.
 import argparse
 import logging
 import distutils.util
+import sys
 import psycopg2
 
 import config
@@ -57,7 +58,7 @@ def query_yesno(question):
 
 
 def db_transaction(params, fichier, action=None):
-    """ using param, connect to db, execute SQL fichier """
+    """ using params, connect to db, execute SQL fichier """
 
     gonogo = query_yesno(' '.join((action, fichier)))
 
@@ -67,13 +68,14 @@ def db_transaction(params, fichier, action=None):
                 if gonogo == 1:
                     curs.execute(open(fichier, "r").read())
 
-    except (Exception, psycopg2.errors.SyntaxError) as Err:
-        print(Err)
-        logging.warning(Err)
+    except (Exception, psycopg2.Error) as db_err:
+        print(db_err.pgerror)
+        print(db_err.diag.message_primary)
+        logging.warning(db_err)
 
 
 if __name__ == '__main__':
-    """ """
+    """ pointless-string-statement """
 
     args = get_args()
 
@@ -96,4 +98,4 @@ if __name__ == '__main__':
 
     else:
         get_args(helper=True)
-        exit(1)
+        sys.exit(1)
