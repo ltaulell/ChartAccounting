@@ -36,6 +36,7 @@ def get_args(helper=False):
     parser.add_argument('-c', '--create', action='store_true', help='create tables')
     parser.add_argument('-i', '--insert', action='store_true', help='insert preliminary tables')
     parser.add_argument('-p', '--purge', action='store_true', help='purge tables (drop)')
+    parser.add_argument('-r', '--redo', action='store_true', help='purge tables, then create, then insert')
 
     if helper:
         return parser.print_usage()
@@ -86,13 +87,19 @@ if __name__ == '__main__':
     paramConDb = config.parserIni(filename='infodb.ini', section='postgresql')
     log.debug(paramConDb)
 
-    if args.create:
-        db_transaction(paramConDb, 'sql/bdd.sql', action='create')
+    if args.redo:
+        args.purge = True
+        args.create = True
+        args.insert = True
 
-    elif args.purge:
+    if args.purge:
         db_transaction(paramConDb, 'sql/cleanup.sql', action='drop')
 
-    elif args.insert:
+    if args.create:
+        args.insert = True
+        db_transaction(paramConDb, 'sql/bdd.sql', action='create')
+
+    if args.insert:
         db_transaction(paramConDb, 'sql/clusters_insert.sql', action='insert')
         db_transaction(paramConDb, 'sql/metagroupes_insert.sql', action='insert')
 
