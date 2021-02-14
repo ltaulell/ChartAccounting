@@ -22,7 +22,6 @@ TODO:
 
 import argparse
 import logging
-#import pandas as pd
 import csv
 import psycopg2
 
@@ -55,7 +54,18 @@ def get_args(helper=False):
 def decomment(csvfile):
     for row in csvfile:
         raw = row.split('#')[0].strip()
-        if raw: yield raw
+        if raw:
+            yield raw
+
+
+def coincoin(connexion, sql, data, commit=False):
+    """ execute sql, always return id """
+    with connexion.cursor() as cursor:
+        cursor.execute(sql, data)
+        if commit:
+            conn.commit()
+        log.debug(cursor.statusmessage)
+        return cursor.fetchone()
 
 
 if __name__ == '__main__':
@@ -82,99 +92,155 @@ if __name__ == '__main__':
     # conn.set_session(isolation_level=psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE, autocommit=True)
     log.debug(conn)
 
-
     with open(fichier, "r", encoding='latin1') as csvfile:
         reader = csv.DictReader(decomment(csvfile), fieldnames=HEADER_LIST, delimiter=':')
         for line in reader:
-            print(line['qname'], line['host'], line['group'], line['cpu'])
-            #exit(0)
+            log.debug('{}, {}, {}, {}'.format(line['qname'], line['host'], line['group'], line['cpu']))
+            # exit(0)
 
-        #with conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT id_queue FROM queues WHERE queue_name LIKE (%s);", (line['qname'],))
-                idQueue = cur.fetchone()
-                print(cur.statusmessage)
-                print('select:', idQueue)
+            with conn:
+                # queue
+                sql = ("SELECT id_queue FROM queues WHERE queue_name LIKE (%s);")
+                data = (line['qname'],)
+                idQueue = coincoin(conn, sql, data)
+                log.debug('select: {}'.format(idQueue))
 
                 if idQueue is None:
-                    cur.execute("INSERT INTO queues(queue_name) VALUES (%s) RETURNING id_queue;", (line['qname'],))
-                    idQueue = cur.fetchone()
-                    print(cur.statusmessage)
-                    conn.commit()
-                    # cur.execute("SELECT id_queue FROM queues WHERE queue_name LIKE (%s);", (line['qname']))
-                    # idQueue = cur.fetchone()
-                    print('insert:', idQueue)
-            print('idQueue:', idQueue)
+                    sql = ("INSERT INTO queues(queue_name) VALUES (%s) RETURNING id_queue;")
+                    data = (line['qname'],)
+                    idQueue = coincoin(conn, sql, data, commit=True)
+                    log.debug('insert: {}'.format(idQueue))
+                log.debug('idQueue: {}'.format(idQueue))
 
-        #with conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT id_host FROM hosts WHERE hostname LIKE (%s);", (line['host'],))
-                idHost = cur.fetchone()
-                print('select:', idHost)
+                # host
+                sql = ("SELECT id_host FROM hosts WHERE hostname LIKE (%s);")
+                data = (line['host'],)
+                idHost = coincoin(conn, sql, data)
+                log.debug('select: {}'.format(idHost))
 
                 if idHost is None:
-                    cur.execute("INSERT INTO hosts(hostname) VALUES (%s) RETURNING id_host;", (line['host'],))
-                    idHost = cur.fetchone()
-                    conn.commit()
-                    print('insert:', idHost)
-            print('idHost:', idHost)
+                    sql = ("INSERT INTO hosts(hostname) VALUES (%s) RETURNING id_host;")
+                    data = (line['host'],)
+                    idHost = coincoin(conn, sql, data, commit=True)
+                    log.debug('insert: {}'.format(idHost))
+                log.debug('idHost: {}'.format(idHost))
 
-        #with conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT id_groupe FROM groupes WHERE group_name LIKE (%s);", (line['group'],))
-                idGroup = cur.fetchone()
-                print('select:', idGroup)
+                # group
+                sql = ("SELECT id_groupe FROM groupes WHERE group_name LIKE (%s);")
+                data = (line['group'],)
+                idGroup = coincoin(conn, sql, data)
+                log.debug('select: {}'.format(idGroup))
 
                 if idGroup is None:
-                    cur.execute("INSERT INTO groupes(group_name) VALUES (%s) RETURNING id_groupe;", (line['group'],))
-                    idGroup = cur.fetchone()
-                    conn.commit()
-                    print('insert:', idGroup)
-            print('idGroup:', idGroup)
+                    sql = ("INSERT INTO groupes(group_name) VALUES (%s) RETURNING id_groupe;")
+                    data = (line['group'],)
+                    idGroup = coincoin(conn, sql, data, commit=True)
+                    log.debug('insert: {}'.format(idGroup))
+                log.debug('idGroup: {}'.format(idGroup))
 
-        #with conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT id_user FROM users WHERE login LIKE (%s);", (line['owner'],))
-                idUser = cur.fetchone()
-                print('select:', idUser)
+                # user/login/owner
+                sql = ("SELECT id_user FROM users WHERE login LIKE (%s);")
+                data = (line['owner'],)
+                idUser = coincoin(conn, sql, data)
+                log.debug('select: {}'.format(idUser))
 
                 if idUser is None:
-                    cur.execute("INSERT INTO users(login) VALUES (%s) RETURNING id_user;", (line['owner'],))
-                    conn.commit()
-                    print(cur.statusmessage)
-                    idUser = cur.fetchone()
-                    print(cur.statusmessage)
-                    #conn.commit()
-                    print('insert:', idUser)
-            print('idUser:', idUser)
-            #exit(0)
-        #with conn:
-            with conn.cursor() as cur:
-                cur.execute("INSERT INTO job_(id_queue, id_host, id_groupe, id_user, job_name, job_id, submit_time, start_time, end_time, failed, exit_status, ru_wallclock, ru_utime, ru_stime, project, slots, cpu, mem, io, maxvmem) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);",
-                            (idQueue[0],
-                            idHost[0],
-                            idGroup[0],
-                            idUser[0],
-                            str(line['job_name']),
-                            int(line['job_id']),
-                            int(line['submit_time']),
-                            int(line['start']),
-                            int(line['end']),
-                            int(line['fail']),
-                            int(line['exit_status']),
-                            float(line['ru_wallclock']),
-                            float(line['ru_utime']),
-                            float(line['ru_stime']),
-                            str(line['project']),
-                            int(line['slots']),
-                            float(line['cpu']),
-                            float(line['mem']),
-                            float(line['io']),
-                            float(line['maxvmem'],)
-                            ))
-                conn.commit()
+                    sql = ("INSERT INTO users(login) VALUES (%s) RETURNING id_user;")
+                    data = (line['owner'],)
+                    idUser = coincoin(conn, sql, data, commit=True)
+                    log.debug('insert: {}'.format(idUser))
+                log.debug('idUser: {}'.format(idUser))
+
+                # TODO: clusters and metagroupes attribution
+                # finally, job
+                # TODO: recherche d'abord, insert ensuite
+                sql = (""" INSERT INTO job_(id_queue,
+                                            id_host,
+                                            id_groupe,
+                                            id_user,
+                                            job_name,
+                                            job_id,
+                                            submit_time,
+                                            start_time,
+                                            end_time,
+                                            failed,
+                                            exit_status,
+                                            ru_wallclock,
+                                            ru_utime,
+                                            ru_stime,
+                                            project,
+                                            slots,
+                                            cpu,
+                                            mem,
+                                            io,
+                                            maxvmem)
+                            VALUES (%s,
+                                    %s,
+                                    %s,
+                                    %s,
+                                    %s,
+                                    %s,
+                                    %s,
+                                    %s,
+                                    %s,
+                                    %s,
+                                    %s,
+                                    %s,
+                                    %s,
+                                    %s,
+                                    %s,
+                                    %s,
+                                    %s,
+                                    %s,
+                                    %s,
+                                    %s)
+                            RETURNING job_id; """)
+                data = (idQueue[0],
+                        idHost[0],
+                        idGroup[0],
+                        idUser[0],
+                        line['job_name'],
+                        line['job_id'],
+                        line['submit_time'],
+                        line['start'],
+                        line['end'],
+                        line['fail'],
+                        line['exit_status'],
+                        line['ru_wallclock'],
+                        line['ru_utime'],
+                        line['ru_stime'],
+                        line['project'],
+                        line['slots'],
+                        line['cpu'],
+                        line['mem'],
+                        line['io'],
+                        line['maxvmem'],
+                        )
+
+                coincoin(conn, sql, data, commit=True)
 
     conn.close()
+
+
+"""
+                        str(line['job_name']),
+                        int(line['job_id']),
+                        int(line['submit_time']),
+                        int(line['start']),
+                        int(line['end']),
+                        int(line['fail']),
+                        int(line['exit_status']),
+                        float(line['ru_wallclock']),
+                        float(line['ru_utime']),
+                        float(line['ru_stime']),
+                        str(line['project']),
+                        int(line['slots']),
+                        float(line['cpu']),
+                        float(line['mem']),
+                        float(line['io']),
+                        float(line['maxvmem'],)
+
+"""
 
 """
 HEADER_LIST = ['qname', 'host', 'group', 'owner', 'job_name', 'job_id', 'account', 'priority', 'submit_time', 'start', 'end', 'fail', 'exit_status', 'ru_wallclock', 'ru_utime', 'ru_stime', 'ru_maxrss', 'ru_ixrss', 'ru_ismrss', 'ru_idrss', 'ru_isrss', 'ru_minflt', 'ru_majflt', 'ru_nswap', 'ru_inblock', 'ru_oublock', 'ru_msgsnd', 'ru_msgrcv', 'ru_nsignals', 'ru_nvcsw', 'ru_nivcsw', 'project', 'department', 'granted_pe', 'slots', 'task_number', 'cpu', 'mem', 'io', 'category', 'iow', 'pe_taskid', 'maxvmem', 'arid', 'ar_submission_time']
