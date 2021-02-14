@@ -22,7 +22,8 @@ TODO:
 
 import argparse
 import logging
-import pandas as pd
+#import pandas as pd
+import csv
 import psycopg2
 
 import config
@@ -51,6 +52,12 @@ def get_args(helper=False):
         return parser.parse_args()
 
 
+def decomment(csvfile):
+    for row in csvfile:
+        raw = row.split('#')[0].strip()
+        if raw: yield raw
+
+
 if __name__ == '__main__':
     """ for line in pd.read_csv(fichier, sep=":", names=HEADER_LIST, skip_blank_lines=True, index_col=False, chunksize=1, comment='#'): """
 
@@ -75,67 +82,73 @@ if __name__ == '__main__':
     # conn.set_session(isolation_level=psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE, autocommit=True)
     log.debug(conn)
 
-    for line in pd.read_csv(fichier, sep=':', names=HEADER_LIST, skip_blank_lines=True, index_col=False, chunksize=1, comment='#'):
 
-        print(line)
+    with open(fichier, "r", encoding='latin1') as csvfile:
+        reader = csv.DictReader(decomment(csvfile), fieldnames=HEADER_LIST, delimiter=':')
+        for line in reader:
+            print(line['qname'], line['host'], line['group'], line['cpu'])
+            #exit(0)
 
-        with conn:
+        #with conn:
             with conn.cursor() as cur:
-                idQueue = cur.execute("SELECT id_queue FROM queues WHERE queue_name LIKE (%s);", (line['qname']))
+                cur.execute("SELECT id_queue FROM queues WHERE queue_name LIKE (%s);", (line['qname'],))
                 idQueue = cur.fetchone()
+                print(cur.statusmessage)
                 print('select:', idQueue)
 
                 if idQueue is None:
-                    cur.execute("INSERT INTO queues(queue_name) VALUES (%s) RETURNING id_queue;", (line['qname']))
+                    cur.execute("INSERT INTO queues(queue_name) VALUES (%s) RETURNING id_queue;", (line['qname'],))
                     idQueue = cur.fetchone()
-                    #conn.commit()
+                    print(cur.statusmessage)
+                    conn.commit()
                     # cur.execute("SELECT id_queue FROM queues WHERE queue_name LIKE (%s);", (line['qname']))
                     # idQueue = cur.fetchone()
                     print('insert:', idQueue)
             print('idQueue:', idQueue)
 
-        with conn:
+        #with conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT id_host FROM hosts WHERE hostname LIKE (%s);", (line['host']))
+                cur.execute("SELECT id_host FROM hosts WHERE hostname LIKE (%s);", (line['host'],))
                 idHost = cur.fetchone()
                 print('select:', idHost)
 
                 if idHost is None:
-                    cur.execute("INSERT INTO hosts(hostname) VALUES (%s) RETURNING id_host;", (line['host']))
+                    cur.execute("INSERT INTO hosts(hostname) VALUES (%s) RETURNING id_host;", (line['host'],))
                     idHost = cur.fetchone()
-                    #conn.commit()
+                    conn.commit()
                     print('insert:', idHost)
             print('idHost:', idHost)
 
-        with conn:
+        #with conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT id_groupe FROM groupes WHERE group_name LIKE (%s);", (line['group']))
+                cur.execute("SELECT id_groupe FROM groupes WHERE group_name LIKE (%s);", (line['group'],))
                 idGroup = cur.fetchone()
                 print('select:', idGroup)
 
                 if idGroup is None:
-                    cur.execute("INSERT INTO groupes(group_name) VALUES (%s) RETURNING id_groupe;", (line['group']))
+                    cur.execute("INSERT INTO groupes(group_name) VALUES (%s) RETURNING id_groupe;", (line['group'],))
                     idGroup = cur.fetchone()
-                    # conn.commit()
+                    conn.commit()
                     print('insert:', idGroup)
             print('idGroup:', idGroup)
 
-        with conn:
+        #with conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT id_user FROM users WHERE login LIKE (%s);", (line['owner']))
+                cur.execute("SELECT id_user FROM users WHERE login LIKE (%s);", (line['owner'],))
                 idUser = cur.fetchone()
                 print('select:', idUser)
 
                 if idUser is None:
-                    cur.execute("INSERT INTO users(login) VALUES (%s);", (line['owner']))
-                    #conn.commit()
+                    cur.execute("INSERT INTO users(login) VALUES (%s) RETURNING id_user;", (line['owner'],))
+                    conn.commit()
                     print(cur.statusmessage)
                     idUser = cur.fetchone()
+                    print(cur.statusmessage)
                     #conn.commit()
                     print('insert:', idUser)
             print('idUser:', idUser)
-
-        with conn:
+            #exit(0)
+        #with conn:
             with conn.cursor() as cur:
                 cur.execute("INSERT INTO job_(id_queue, id_host, id_groupe, id_user, job_name, job_id, submit_time, start_time, end_time, failed, exit_status, ru_wallclock, ru_utime, ru_stime, project, slots, cpu, mem, io, maxvmem) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);",
                             (idQueue[0],
@@ -157,9 +170,9 @@ if __name__ == '__main__':
                             float(line['cpu']),
                             float(line['mem']),
                             float(line['io']),
-                            float(line['maxvmem'])
+                            float(line['maxvmem'],)
                             ))
-            conn.commit()
+                conn.commit()
 
     conn.close()
 
