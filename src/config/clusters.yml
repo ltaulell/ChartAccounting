@@ -3,36 +3,38 @@
 # c8220 match c8220lin130 et c8220node201
 # ou par hostname (quelques cas particuliers):
 # r820node253 match r820node253
-clusters:
-  Epyc:
-    c6525
-  Lake:
-    c6420
-    xlr170
-    xlr178
-    r730gpu
-    r740gpu
-    r740bigmem201
-  E5:
-    sl230
-    c82gpgpu
-    c8220
-    c6230
-    r720gpu
-    r820node253
-    celera
-  X5:
-    sl390
-    r815
-    c6100
-    r422
-  default:
-    dl165
-    dl175
-    r410
-    x41z
-    v20z
-    v22z
-    v40z
-    m600
-    # +catchall pour ce qui ne matche rien (UNKNOWN)
+#cluster_name:
+#  first part of hostnames
+Epyc:
+  c6525
+Lake:
+  c6420
+  xlr170
+  xlr178
+  r730gpu
+  r740gpu
+  r740bigmem201
+E5:
+  sl230
+  c82gpgpu
+  c8220
+  c6230
+  r720gpu
+  r820node253
+  celera
+X5:
+  sl390
+  r815
+  c6100
+  r422
+default:
+# +catchall pour ce qui ne matche rien (UNKNOWN)
+  dl165
+  dl175
+  r410
+  x41z
+  v20z
+  v22z
+  v40z
+  m600
+
