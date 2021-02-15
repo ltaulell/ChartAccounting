@@ -187,47 +187,97 @@ if __name__ == '__main__':
                 data = (idQueue, idHost)
                 id_HostinQueue = coincoin(conn, sql, data)
                 log.debug('select: {}'.format(id_HostinQueue))
+
                 if id_HostinQueue is None:
                     sql = ("INSERT INTO hosts_in_queues(id_queue, id_host) VALUES (%s, %s) RETURNING id_queue, id_host;")
                     data = (idQueue, idHost)
                     id_HostinQueue = coincoin(conn, sql, data, commit=True)
                     log.debug('insert: {}'.format(id_HostinQueue))
+                log.debug('id_HostinQueue : {}'.format(id_HostinQueue))
 
                 # users_in_groupes
                 sql = ("SELECT id_groupe, id_user FROM users_in_groupes WHERE id_groupe = (%s) AND id_user = (%s);")
                 data = (idGroup, idUser)
                 id_UserinGroupe = coincoin(conn, sql, data)
                 log.debug('select: {}'.format(id_UserinGroupe))
+
                 if id_UserinGroupe is None:
                     sql = ("INSERT INTO users_in_groupes(id_groupe, id_user) VALUES (%s, %s) RETURNING id_groupe, id_user;")
                     data = (idGroup, idUser)
                     id_UserinGroupe = coincoin(conn, sql, data, commit=True)
                     log.debug('insert: {}'.format(id_UserinGroupe))
+                log.debug('id_UserinGroupe: {}'.format(id_UserinGroupe))
 
                 # hosts_in_clusters
                 cluster = [key for key in CLUSTERS for value in CLUSTERS[key].split() if value in line['host']][0]
+                # FIXME si y'a IndexError, faut select/insert dans 'default'
+                # try: cluster = ; except IndexError: cluster = 'default'
                 sql = ("SELECT id_cluster FROM clusters WHERE cluster_name LIKE (%s);")
                 data = (cluster,)
                 idCluster = coincoin(conn, sql, data)
+                log.debug('select: {}'.format(idCluster))
+
                 if idCluster:
                     sql = ("SELECT id_cluster, id_host FROM hosts_in_clusters WHERE id_cluster = (%s) AND id_host = (%s) ;")
                     data = (idCluster, idHost)
                     id_HostinCluster = coincoin(conn, sql, data)
                     log.debug('select: {}'.format(id_HostinCluster))
+
                     if id_HostinCluster is None:
                         sql = ("INSERT INTO hosts_in_clusters(id_cluster, id_host) VALUES (%s, %s) RETURNING id_cluster, id_host;")
                         data = (idCluster, idHost)
                         id_HostinCluster = coincoin(conn, sql, data, commit=True)
                         log.debug('insert: {}'.format(id_HostinCluster))
+                log.debug('id_HostinCluster: {}'.format(id_HostinCluster))
 
-                # groupes_in_metagroupes TODO
+                # groupes_in_metagroupes
                 metagroupe_group = [key for key in METAGROUPES for value in METAGROUPES[key].split() if value in line['group']][0]
+                # FIXME si y'a IndexError, faut select/insert dans 'autres_ENS'
+                # try: metagroupe_group = ; except IndexError: metagroupe_group = 'autres_ENS'
+                sql = ("SELECT id_metagroupe FROM metagroupes WHERE meta_name LIKE (%s);")
+                data = (metagroupe_group,)
+                idMetaGroup = coincoin(conn, sql, data)
 
-                # users_in_metagroupes TODO
-                metagroupe_user = [key for key in METAGROUPES for value in METAGROUPES[key].split() if value in line['owner']][0]
+                if idMetaGroup:
+                    sql = ("SELECT id_metagroupe, id_groupe FROM groupes_in_metagroupes WHERE id_metagroupe = (%s) AND id_groupe = (%s);")
+                    data = (idMetaGroup, idGroup)
+                    id_GroupinMeta = coincoin(conn, sql, data)
+                    log.debug('select: {}'.format(id_GroupinMeta))
+
+                    if id_GroupinMeta is None:
+                        sql = ("INSERT INTO groupes_in_metagroupes(id_metagroupe, id_groupe) VALUES (%s, %s) RETURNING id_metagroupe, id_groupe;")
+                        data = (idMetaGroup, idGroup)
+                        id_GroupinMeta = coincoin(conn, sql, data, commit=True)
+                        log.debug('insert: {}'.format(id_GroupinMeta))
+                log.debug('id_GroupinMeta: {}'.format(id_GroupinMeta))
+
+                # users_in_metagroupes
+                try:
+                    metagroupe_user = [key for key in METAGROUPES for value in METAGROUPES[key].split() if value in line['owner']][0]
+                    sql = ("SELECT id_metagroupe FROM metagroupes WHERE meta_name LIKE (%s);")
+                    data = (metagroupe_user,)
+                    idMetaUser = coincoin(conn, sql, data)
+                    log.debug('select: {}'.format(idMetaUser))
+
+                    if idMetaUser:
+                        sql = ("SELECT id_metagroupe, id_user FROM users_in_metagroupes WHERE id_metagroupe = (%s) AND id_user = (%s);")
+                        data = (idMetaUser, idUser)
+                        id_UserinMeta = coincoin(conn, sql, data)
+                        log.debug('select: {}'.format(id_UserinMeta))
+
+                        if id_UserinMeta is None:
+                            sql = ("INSERT INTO users_in_metagroupes(id_metagroupe, id_user) VALUES (%s, %s) RETURNING id_metagroupe, id_user;")
+                            data = (idMetaUser, idUser)
+                            id_UserinMeta = coincoin(conn, sql, data, commit=True)
+                            log.debug('insert: {}'.format(id_UserinMeta))
+                    log.debug('id_UserinMeta: {}'.format(id_UserinMeta))
+
+                except IndexError:
+                    """ là, par contre, c'est pas obligatoire """
+                    pass
 
                 # finally, job
-                # TODO: recherche d'abord, insert ensuite
+                # TODO: select d'abord, insert ensuite
                 sql = (""" INSERT INTO job_(id_queue,
                                             id_host,
                                             id_groupe,
