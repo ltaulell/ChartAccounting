@@ -15,13 +15,16 @@ Lake:
   r740gpu
   r740bigmem201
 E5:
+# les changement de nom en cours de vie, ça va pas aider...
   sl230
   c82gpgpu
   c8220
   c6320
   r720gpu
+  r720gpgpu
   r820node253
   celera
+  r730gpgpu
 X5:
   sl390
   r815
