@@ -36,4 +36,3 @@ clusters:
     v40z
     m600
     # +catchall pour ce qui ne matche rien (UNKNOWN)
-    *
