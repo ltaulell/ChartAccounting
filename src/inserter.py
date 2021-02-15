@@ -24,6 +24,8 @@ import argparse
 import logging
 import csv
 import psycopg2
+import yaml
+import sys
 
 import config
 
@@ -31,7 +33,8 @@ log = logging.getLogger()
 stream_handler = logging.StreamHandler()
 log.addHandler(stream_handler)
 
-
+CLUSTERS_FILE = 'config/clusters.yml'
+METAGROUPES_FILE = 'config/metagroups.yml'
 HEADER_LIST = ['qname', 'host', 'group', 'owner', 'job_name', 'job_id', 'account', 'priority', 'submit_time', 'start', 'end', 'fail', 'exit_status', 'ru_wallclock', 'ru_utime', 'ru_stime', 'ru_maxrss', 'ru_ixrss', 'ru_ismrss', 'ru_idrss', 'ru_isrss', 'ru_minflt', 'ru_majflt', 'ru_nswap', 'ru_inblock', 'ru_oublock', 'ru_msgsnd', 'ru_msgrcv', 'ru_nsignals', 'ru_nvcsw', 'ru_nivcsw', 'project', 'department', 'granted_pe', 'slots', 'task_number', 'cpu', 'mem', 'io', 'category', 'iow', 'pe_taskid', 'maxvmem', 'arid', 'ar_submission_time']
 
 
@@ -59,13 +62,37 @@ def decomment(csvfile):
 
 
 def coincoin(connexion, sql, data, commit=False):
-    """ execute sql, always return id """
+    """ execute sql, always return id
+    SQL inserts MUST returning ids """
     with connexion.cursor() as cursor:
         cursor.execute(sql, data)
         if commit:
-            conn.commit()
+            connexion.commit()
         log.debug(cursor.statusmessage)
         return cursor.fetchone()
+
+
+def load_yaml_file(yamlfile):
+    """ Load yamlfile, return a dict
+
+        yamlfile is mandatory, using safe_load
+        Throw yaml errors, with positions, if any, and quit.
+        return a dict
+    """
+    try:
+        with open(yamlfile, 'r') as fichier:
+            contenu = yaml.safe_load(fichier)
+            return contenu
+    except IOError:
+        log.critical('Unable to read/load config file: {}'.format(fichier.name))
+        sys.exit(1)
+    except yaml.MarkedYAMLError as erreur:
+        if hasattr(erreur, 'problem_mark'):
+            mark = erreur.problem_mark
+            msg_erreur = "YAML error position: ({}:{}) in ".format(mark.line + 1,
+                                                                   mark.column)
+            log.critical('{} {}'.format(msg_erreur, fichier.name))
+        sys.exit(1)
 
 
 if __name__ == '__main__':
@@ -83,6 +110,10 @@ if __name__ == '__main__':
     else:
         log.warning('no input file!')
         exit(1)
+
+    # prepare yaml dictionnaries
+    CLUSTERS = load_yaml_file(CLUSTERS_FILE)
+    METAGROUPES = load_yaml_file(METAGROUPES_FILE)
 
     param_conn_db = config.parserIni(filename='infodb.ini', section='postgresql')
     log.debug(param_conn_db)
@@ -151,7 +182,50 @@ if __name__ == '__main__':
                     log.debug('insert: {}'.format(idUser))
                 log.debug('idUser: {}'.format(idUser))
 
-                # TODO: clusters and metagroupes attribution
+                # hosts_in_queues
+                sql = ("SELECT id_queue, id_host FROM hosts_in_queues WHERE id_queue = (%s) AND id_host = (%s);")
+                data = (idQueue, idHost)
+                id_HostinQueue = coincoin(conn, sql, data)
+                log.debug('select: {}'.format(id_HostinQueue))
+                if id_HostinQueue is None:
+                    sql = ("INSERT INTO hosts_in_queues(id_queue, id_host) VALUES (%s, %s) RETURNING id_queue, id_host;")
+                    data = (idQueue, idHost)
+                    id_HostinQueue = coincoin(conn, sql, data, commit=True)
+                    log.debug('insert: {}'.format(id_HostinQueue))
+
+                # users_in_groupes
+                sql = ("SELECT id_groupe, id_user FROM users_in_groupes WHERE id_groupe = (%s) AND id_user = (%s);")
+                data = (idGroup, idUser)
+                id_UserinGroupe = coincoin(conn, sql, data)
+                log.debug('select: {}'.format(id_UserinGroupe))
+                if id_UserinGroupe is None:
+                    sql = ("INSERT INTO users_in_groupes(id_groupe, id_user) VALUES (%s, %s) RETURNING id_groupe, id_user;")
+                    data = (idGroup, idUser)
+                    id_UserinGroupe = coincoin(conn, sql, data, commit=True)
+                    log.debug('insert: {}'.format(id_UserinGroupe))
+
+                # hosts_in_clusters
+                cluster = [key for key in CLUSTERS for value in CLUSTERS[key].split() if value in line['host']][0]
+                sql = ("SELECT id_cluster FROM clusters WHERE cluster_name LIKE (%s);")
+                data = (cluster,)
+                idCluster = coincoin(conn, sql, data)
+                if idCluster:
+                    sql = ("SELECT id_cluster, id_host FROM hosts_in_clusters WHERE id_cluster = (%s) AND id_host = (%s) ;")
+                    data = (idCluster, idHost)
+                    id_HostinCluster = coincoin(conn, sql, data)
+                    log.debug('select: {}'.format(id_HostinCluster))
+                    if id_HostinCluster is None:
+                        sql = ("INSERT INTO hosts_in_clusters(id_cluster, id_host) VALUES (%s, %s) RETURNING id_cluster, id_host;")
+                        data = (idCluster, idHost)
+                        id_HostinCluster = coincoin(conn, sql, data, commit=True)
+                        log.debug('insert: {}'.format(id_HostinCluster))
+
+                # groupes_in_metagroupes TODO
+                metagroupe_group = [key for key in METAGROUPES for value in METAGROUPES[key].split() if value in line['group']][0]
+
+                # users_in_metagroupes TODO
+                metagroupe_user = [key for key in METAGROUPES for value in METAGROUPES[key].split() if value in line['owner']][0]
+
                 # finally, job
                 # TODO: recherche d'abord, insert ensuite
                 sql = (""" INSERT INTO job_(id_queue,
