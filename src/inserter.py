@@ -13,8 +13,9 @@ Insert data from accounting file into database
 go easy, go simple.
 
 TODO:
-- find a way around transaction(s)
-- yielder/getter ? -> multiprocessing inserts ? (faster)
+- GROS GROS refactor + nettoyage
+- find a way around transaction(s) ?
+- yielder/getter ? -> multiprocessing inserts ? (maybe faster?)
     https://www.psycopg.org/docs/usage.html#thread-safety
     https://www.psycopg.org/docs/advanced.html#green-support
 
@@ -96,13 +97,16 @@ def load_yaml_file(yamlfile):
 
 
 if __name__ == '__main__':
-    """ for line in pd.read_csv(fichier, sep=":", names=HEADER_LIST, skip_blank_lines=True, index_col=False, chunksize=1, comment='#'): """
+    """ pd.read_csv autodetecte des types qui sont ensuite poussés vers la base,
+    je reviens sur un open simple (de toute façon, c'est du ligne à ligne) """
 
     args = get_args()
 
     if args.debug:
         log.setLevel('DEBUG')
         log.debug(get_args(helper=True))
+    else:
+        log.setLevel('INFO')
 
     if args.input:
         fichier = ''.join(args.input)
@@ -115,6 +119,7 @@ if __name__ == '__main__':
     CLUSTERS = load_yaml_file(CLUSTERS_FILE)
     METAGROUPES = load_yaml_file(METAGROUPES_FILE)
 
+    # prepare la config locale pgsql
     param_conn_db = config.parserIni(filename='infodb.ini', section='postgresql')
     log.debug(param_conn_db)
 
@@ -127,7 +132,6 @@ if __name__ == '__main__':
         reader = csv.DictReader(decomment(csvfile), fieldnames=HEADER_LIST, delimiter=':')
         for line in reader:
             log.debug('{}, {}, {}, {}'.format(line['qname'], line['host'], line['group'], line['cpu']))
-            # exit(0)
 
             with conn:
                 # queue
@@ -209,9 +213,11 @@ if __name__ == '__main__':
                 log.debug('id_UserinGroupe: {}'.format(id_UserinGroupe))
 
                 # hosts_in_clusters
-                cluster = [key for key in CLUSTERS for value in CLUSTERS[key].split() if value in line['host']][0]
-                # FIXME si y'a IndexError, faut select/insert dans 'default'
-                # try: cluster = ; except IndexError: cluster = 'default'
+                try:
+                    cluster = [key for key in CLUSTERS for value in CLUSTERS[key].split() if value in line['host']][0]
+                except IndexError:
+                    cluster = 'default'
+
                 sql = ("SELECT id_cluster FROM clusters WHERE cluster_name LIKE (%s);")
                 data = (cluster,)
                 idCluster = coincoin(conn, sql, data)
@@ -231,12 +237,15 @@ if __name__ == '__main__':
                 log.debug('id_HostinCluster: {}'.format(id_HostinCluster))
 
                 # groupes_in_metagroupes
-                metagroupe_group = [key for key in METAGROUPES for value in METAGROUPES[key].split() if value in line['group']][0]
-                # FIXME si y'a IndexError, faut select/insert dans 'autres_ENS'
-                # try: metagroupe_group = ; except IndexError: metagroupe_group = 'autres_ENS'
+                try:
+                    metagroupe_group = [key for key in METAGROUPES for value in METAGROUPES[key].split() if value in line['group']][0]
+                except IndexError:
+                    metagroupe_group = 'autres_ENS'
+
                 sql = ("SELECT id_metagroupe FROM metagroupes WHERE meta_name LIKE (%s);")
                 data = (metagroupe_group,)
                 idMetaGroup = coincoin(conn, sql, data)
+                log.debug('select: {}'.format(idMetaGroup))
 
                 if idMetaGroup:
                     sql = ("SELECT id_metagroupe, id_groupe FROM groupes_in_metagroupes WHERE id_metagroupe = (%s) AND id_groupe = (%s);")
@@ -273,12 +282,18 @@ if __name__ == '__main__':
                     log.debug('id_UserinMeta: {}'.format(id_UserinMeta))
 
                 except IndexError:
-                    """ là, par contre, c'est pas obligatoire """
+                    # là, par contre, c'est pas obligatoire
                     pass
 
                 # finally, job
-                # TODO: select d'abord, insert ensuite
-                sql = (""" INSERT INTO job_(id_queue,
+                # FIXME: select d'abord, insert ensuite
+
+                sql = ("SELECT id_queue, id_host, id_user, job_id, start_time, end_time FROM job_ WHERE id_queue = (%s) AND id_host = (%s) AND id_user = (%s) AND job_id = (%s) AND start_time = (%s) AND end_time = (%s);")
+                data = (idQueue[0], idHost[0], idUser[0], line['job_id'], line['start'], line['end'])
+                jobExist = coincoin(conn, sql, data)
+
+                if jobExist is None:
+                    sql = (""" INSERT INTO job_(id_queue,
                                             id_host,
                                             id_groupe,
                                             id_user,
@@ -319,7 +334,7 @@ if __name__ == '__main__':
                                     %s,
                                     %s)
                             RETURNING job_id; """)
-                data = (idQueue[0],
+                    data = (idQueue[0],
                         idHost[0],
                         idGroup[0],
                         idUser[0],
@@ -341,7 +356,11 @@ if __name__ == '__main__':
                         line['maxvmem'],
                         )
 
-                coincoin(conn, sql, data, commit=True)
+                    jobCommit = coincoin(conn, sql, data, commit=True)
+                    log.info('commited: {}, {}, {}'.format(line['job_id'], line['qname'], line['host']))
+
+                else:
+                    log.info('job {} already exist in database'.format(line['job_id']))
 
     conn.close()
 
