@@ -24,9 +24,9 @@ TODO:
 import argparse
 import logging
 import csv
+import sys
 import psycopg2
 import yaml
-import sys
 
 import config
 
@@ -45,6 +45,7 @@ def get_args(helper=False):
     """
     parser = argparse.ArgumentParser(description='upload accounting file into database')
     parser.add_argument('-d', '--debug', action='store_true', help='toggle debug ON')
+    parser.add_argument('-v', '--verbose', action='store_true', help='toggle verbose ON')
     # parser.add_argument('-n', '--dryrun', action='store_true', help='dry run')
     parser.add_argument('-i', '--input', nargs=1, type=str, help='input (accounting file')
 
@@ -55,22 +56,53 @@ def get_args(helper=False):
         return parser.parse_args()
 
 
-def decomment(csvfile):
-    for row in csvfile:
+def decomment(fichiercsv):
+    """ do not yield row containing '#' in first place """
+    for row in fichiercsv:
         raw = row.split('#')[0].strip()
         if raw:
             yield raw
 
 
-def coincoin(connexion, sql, data, commit=False):
-    """ execute sql, always return id
+def coincoin(connexion, commande, payload, commit=False):
+    """ execute commande, always return id
     SQL inserts MUST returning ids """
     with connexion.cursor() as cursor:
-        cursor.execute(sql, data)
+        cursor.execute(commande, str(payload))
         if commit:
             connexion.commit()
         log.debug(cursor.statusmessage)
         return cursor.fetchone()
+
+
+def select_or_insert(conn, table, id_name, payload, name=None, multi=False):
+    """ FIXME: ajouter un insert=True ? """
+
+    payload_str = ''.join(['(', payload, ',)'])
+    log.debug('payload: {}'.format(payload_str))
+
+    if multi is False:
+        sql_str = ''.join(['"SELECT ', id_name, ' FROM ', table, ' WHERE ', name, ' LIKE (%s);"'])
+        result = coincoin(conn, sql_str, payload_str)
+        log.debug('select: {}'.format(result))
+
+        if result is None:
+            sql_str = ''.join(['"INSERT INTO ', table, '(', name, ') VALUES (%s) RETURNING ', id_name, ';"'])
+            result = coincoin(conn, sql_str, payload_str, commit=True)
+            log.debug('insert: {}'.format(result))
+
+    else:
+        id1, id2 = id_name
+        sql_str = ''.join(['"SELECT ', id1, ',', id2, ' FROM ', table, ' WHERE ', id1, ' = (%s) AND ', id2, ' = (%s);"'])
+        result = coincoin(conn, sql_str, payload_str)
+        log.debug('select: {}'.format(result))
+
+        if result is None:
+            sql_str = ''.join(['"INSERT INTO ', table, '(', id1, ',', id2, ') VALUES (%s, %s) RETURNING ', id1, ',', id2, ';"'])
+            result = coincoin(conn, sql_str, payload_str, commit=True)
+            log.debug('insert: {}'.format(result))
+
+    return result
 
 
 def load_yaml_file(yamlfile):
@@ -81,31 +113,33 @@ def load_yaml_file(yamlfile):
         return a dict
     """
     try:
-        with open(yamlfile, 'r') as fichier:
-            contenu = yaml.safe_load(fichier)
+        with open(yamlfile, 'r') as f:
+            contenu = yaml.safe_load(f)
             return contenu
     except IOError:
-        log.critical('Unable to read/load config file: {}'.format(fichier.name))
+        log.critical('Unable to read/load config file: {}'.format(f.name))
         sys.exit(1)
     except yaml.MarkedYAMLError as erreur:
         if hasattr(erreur, 'problem_mark'):
             mark = erreur.problem_mark
             msg_erreur = "YAML error position: ({}:{}) in ".format(mark.line + 1,
                                                                    mark.column)
-            log.critical('{} {}'.format(msg_erreur, fichier.name))
+            log.critical('{} {}'.format(msg_erreur, f.name))
         sys.exit(1)
 
 
 if __name__ == '__main__':
-    """ pd.read_csv autodetecte des types qui sont ensuite poussés vers la base,
-    je reviens sur un open simple (de toute façon, c'est du ligne à ligne) """
+    """
+        pd.read_csv autodetecte des types qui sont ensuite poussés vers la base,
+        je reviens sur un open simple (de toute façon, c'est du ligne à ligne)
+    """
 
     args = get_args()
 
     if args.debug:
         log.setLevel('DEBUG')
         log.debug(get_args(helper=True))
-    else:
+    elif args.verbose:
         log.setLevel('INFO')
 
     if args.input:
@@ -135,6 +169,8 @@ if __name__ == '__main__':
 
             with conn:
                 # queue
+                idQueue = select_or_insert(conn, table='queues', id_name='id_queue', name='queue_name', payload=line['qname'])
+                """
                 sql = ("SELECT id_queue FROM queues WHERE queue_name LIKE (%s);")
                 data = (line['qname'],)
                 idQueue = coincoin(conn, sql, data)
@@ -146,8 +182,11 @@ if __name__ == '__main__':
                     idQueue = coincoin(conn, sql, data, commit=True)
                     log.debug('insert: {}'.format(idQueue))
                 log.debug('idQueue: {}'.format(idQueue))
+                """
 
                 # host
+                idHost = select_or_insert(conn, table='hosts', id_name='id_host', name='hostname', payload=line['host'])
+                """
                 sql = ("SELECT id_host FROM hosts WHERE hostname LIKE (%s);")
                 data = (line['host'],)
                 idHost = coincoin(conn, sql, data)
@@ -159,8 +198,11 @@ if __name__ == '__main__':
                     idHost = coincoin(conn, sql, data, commit=True)
                     log.debug('insert: {}'.format(idHost))
                 log.debug('idHost: {}'.format(idHost))
+                """
 
                 # group
+                idGroup = select_or_insert(conn, table='groupes', id_name='id_groupe', name='group_name', payload=line['group'])
+                """
                 sql = ("SELECT id_groupe FROM groupes WHERE group_name LIKE (%s);")
                 data = (line['group'],)
                 idGroup = coincoin(conn, sql, data)
@@ -172,8 +214,11 @@ if __name__ == '__main__':
                     idGroup = coincoin(conn, sql, data, commit=True)
                     log.debug('insert: {}'.format(idGroup))
                 log.debug('idGroup: {}'.format(idGroup))
+                """
 
                 # user/login/owner
+                idUser = select_or_insert(conn, table='users', id_name='id_user', name='login', payload=line['owner'])
+                """
                 sql = ("SELECT id_user FROM users WHERE login LIKE (%s);")
                 data = (line['owner'],)
                 idUser = coincoin(conn, sql, data)
@@ -185,8 +230,12 @@ if __name__ == '__main__':
                     idUser = coincoin(conn, sql, data, commit=True)
                     log.debug('insert: {}'.format(idUser))
                 log.debug('idUser: {}'.format(idUser))
+                """
 
                 # hosts_in_queues
+                newload = ''.join([idQueue, ',', idHost])
+                id_HostinQueue = select_or_insert(conn, table='hosts_in_queues', id_name=['id_queue', 'id_host'], payload=newload, multi=True)
+                """
                 sql = ("SELECT id_queue, id_host FROM hosts_in_queues WHERE id_queue = (%s) AND id_host = (%s);")
                 data = (idQueue, idHost)
                 id_HostinQueue = coincoin(conn, sql, data)
@@ -198,8 +247,12 @@ if __name__ == '__main__':
                     id_HostinQueue = coincoin(conn, sql, data, commit=True)
                     log.debug('insert: {}'.format(id_HostinQueue))
                 log.debug('id_HostinQueue : {}'.format(id_HostinQueue))
+                """
 
                 # users_in_groupes
+                newload = ''.join([idGroup, ',', idUser])
+                id_HostinQueue = select_or_insert(conn, table='users_in_groupes', id_name=['id_groupe', 'id_user'], payload=newload, multi=True)
+                """
                 sql = ("SELECT id_groupe, id_user FROM users_in_groupes WHERE id_groupe = (%s) AND id_user = (%s);")
                 data = (idGroup, idUser)
                 id_UserinGroupe = coincoin(conn, sql, data)
@@ -211,6 +264,7 @@ if __name__ == '__main__':
                     id_UserinGroupe = coincoin(conn, sql, data, commit=True)
                     log.debug('insert: {}'.format(id_UserinGroupe))
                 log.debug('id_UserinGroupe: {}'.format(id_UserinGroupe))
+                """
 
                 # hosts_in_clusters
                 try:
@@ -218,12 +272,17 @@ if __name__ == '__main__':
                 except IndexError:
                     cluster = 'default'
 
+                # pas d'insert!
+                # idCluster = select_or_insert(conn, table='clusters', id_name='id_cluster', name='cluster_name', payload=cluster)
                 sql = ("SELECT id_cluster FROM clusters WHERE cluster_name LIKE (%s);")
                 data = (cluster,)
                 idCluster = coincoin(conn, sql, data)
-                log.debug('select: {}'.format(idCluster))
+                # log.debug('select: {}'.format(idCluster))
 
                 if idCluster:
+                    newload = ''.join([idCluster, ',', idHost])
+                    id_HostinCluster = select_or_insert(conn, table='hosts_in_clusters', id_name=['id_cluster', 'id_host'], payload=newload, multi=True)
+                    """
                     sql = ("SELECT id_cluster, id_host FROM hosts_in_clusters WHERE id_cluster = (%s) AND id_host = (%s) ;")
                     data = (idCluster, idHost)
                     id_HostinCluster = coincoin(conn, sql, data)
@@ -235,6 +294,7 @@ if __name__ == '__main__':
                         id_HostinCluster = coincoin(conn, sql, data, commit=True)
                         log.debug('insert: {}'.format(id_HostinCluster))
                 log.debug('id_HostinCluster: {}'.format(id_HostinCluster))
+                    """
 
                 # groupes_in_metagroupes
                 try:
@@ -242,12 +302,17 @@ if __name__ == '__main__':
                 except IndexError:
                     metagroupe_group = 'autres_ENS'
 
+                # pas d'insert!
+                # idMetaGroup = select_or_insert(conn, table='metagroupes', id_name='id_metagroupe', name='meta_name', payload=metagroupe_group)
                 sql = ("SELECT id_metagroupe FROM metagroupes WHERE meta_name LIKE (%s);")
                 data = (metagroupe_group,)
                 idMetaGroup = coincoin(conn, sql, data)
-                log.debug('select: {}'.format(idMetaGroup))
+                # log.debug('select: {}'.format(idMetaGroup))
 
                 if idMetaGroup:
+                    newload = ''.join([idMetaGroup, ',', idGroup])
+                    id_GroupinMeta = select_or_insert(conn, table='groupes_in_metagroupes', id_name=['id_metagroupe', 'id_groupe'], payload=newload, multi=True)
+                    """
                     sql = ("SELECT id_metagroupe, id_groupe FROM groupes_in_metagroupes WHERE id_metagroupe = (%s) AND id_groupe = (%s);")
                     data = (idMetaGroup, idGroup)
                     id_GroupinMeta = coincoin(conn, sql, data)
@@ -259,16 +324,21 @@ if __name__ == '__main__':
                         id_GroupinMeta = coincoin(conn, sql, data, commit=True)
                         log.debug('insert: {}'.format(id_GroupinMeta))
                 log.debug('id_GroupinMeta: {}'.format(id_GroupinMeta))
+                    """
 
                 # users_in_metagroupes
                 try:
                     metagroupe_user = [key for key in METAGROUPES for value in METAGROUPES[key].split() if value in line['owner']][0]
+                    # pas d'insert!
                     sql = ("SELECT id_metagroupe FROM metagroupes WHERE meta_name LIKE (%s);")
                     data = (metagroupe_user,)
                     idMetaUser = coincoin(conn, sql, data)
-                    log.debug('select: {}'.format(idMetaUser))
+                    # log.debug('select: {}'.format(idMetaUser))
 
                     if idMetaUser:
+                        newload = ''.join([idMetaUser, ',', idUser])
+                        id_UserinMeta = select_or_insert(conn, table='users_in_metagroupes', id_name=['id_metagroupe', 'id_user'], payload=newload, multi=True)
+                        """
                         sql = ("SELECT id_metagroupe, id_user FROM users_in_metagroupes WHERE id_metagroupe = (%s) AND id_user = (%s);")
                         data = (idMetaUser, idUser)
                         id_UserinMeta = coincoin(conn, sql, data)
@@ -280,6 +350,7 @@ if __name__ == '__main__':
                             id_UserinMeta = coincoin(conn, sql, data, commit=True)
                             log.debug('insert: {}'.format(id_UserinMeta))
                     log.debug('id_UserinMeta: {}'.format(id_UserinMeta))
+                        """
 
                 except IndexError:
                     # là, par contre, c'est pas obligatoire
@@ -335,26 +406,26 @@ if __name__ == '__main__':
                                     %s)
                             RETURNING job_id; """)
                     data = (idQueue[0],
-                        idHost[0],
-                        idGroup[0],
-                        idUser[0],
-                        line['job_name'],
-                        line['job_id'],
-                        line['submit_time'],
-                        line['start'],
-                        line['end'],
-                        line['fail'],
-                        line['exit_status'],
-                        line['ru_wallclock'],
-                        line['ru_utime'],
-                        line['ru_stime'],
-                        line['project'],
-                        line['slots'],
-                        line['cpu'],
-                        line['mem'],
-                        line['io'],
-                        line['maxvmem'],
-                        )
+                            idHost[0],
+                            idGroup[0],
+                            idUser[0],
+                            line['job_name'],
+                            line['job_id'],
+                            line['submit_time'],
+                            line['start'],
+                            line['end'],
+                            line['fail'],
+                            line['exit_status'],
+                            line['ru_wallclock'],
+                            line['ru_utime'],
+                            line['ru_stime'],
+                            line['project'],
+                            line['slots'],
+                            line['cpu'],
+                            line['mem'],
+                            line['io'],
+                            line['maxvmem'],
+                            )
 
                     jobCommit = coincoin(conn, sql, data, commit=True)
                     log.info('commited: {}, {}, {}'.format(line['job_id'], line['qname'], line['host']))
