@@ -12,9 +12,10 @@ Insert data from accounting file into database
 
 go easy, go simple.
 
-TODO:
-- GROS GROS refactor + nettoyage
+TODO/FIXME:
+
 - find a way around transaction(s) ?
+
 - yielder/getter ? -> multiprocessing inserts ? (maybe faster?)
     https://www.psycopg.org/docs/usage.html#thread-safety
     https://www.psycopg.org/docs/advanced.html#green-support
@@ -51,7 +52,6 @@ def get_args(helper=False):
 
     if helper:
         return parser.print_usage()
-        # return parser.print_help()
     else:
         return parser.parse_args()
 
@@ -64,42 +64,42 @@ def decomment(fichiercsv):
             yield raw
 
 
-def coincoin(connexion, commande, payload, commit=False):
+def execute_sql(connexion, commande, payload, commit=False):
     """ execute commande, always return id
     SQL inserts MUST returning ids """
+
     with connexion.cursor() as cursor:
-        cursor.execute(commande, str(payload))
+        cursor.execute(commande, payload)
         if commit:
             connexion.commit()
         log.debug(cursor.statusmessage)
         return cursor.fetchone()
 
 
-def select_or_insert(conn, table, id_name, payload, name=None, multi=False):
-    """ FIXME: ajouter un insert=True ? """
+def select_or_insert(conn, table, id_name, payload, name=None, multi=False, insert=True):
+    """ Prepare the SQL statements, payload MUST be a list """
 
-    payload_str = ''.join(['(', payload, ',)'])
-    log.debug('payload: {}'.format(payload_str))
+    log.debug('payload: {}'.format(payload))
 
     if multi is False:
-        sql_str = ''.join(['"SELECT ', id_name, ' FROM ', table, ' WHERE ', name, ' LIKE (%s);"'])
-        result = coincoin(conn, sql_str, payload_str)
+        sql_str = ''.join(['SELECT ', id_name, ' FROM ', table, ' WHERE ', name, ' LIKE (%s);'])
+        result = execute_sql(conn, sql_str, payload)
         log.debug('select: {}'.format(result))
 
-        if result is None:
-            sql_str = ''.join(['"INSERT INTO ', table, '(', name, ') VALUES (%s) RETURNING ', id_name, ';"'])
-            result = coincoin(conn, sql_str, payload_str, commit=True)
+        if result is None and insert is True:
+            sql_str = ''.join(['INSERT INTO ', table, '(', name, ') VALUES (%s) RETURNING ', id_name, ';'])
+            result = execute_sql(conn, sql_str, payload, commit=True)
             log.debug('insert: {}'.format(result))
 
     else:
         id1, id2 = id_name
-        sql_str = ''.join(['"SELECT ', id1, ',', id2, ' FROM ', table, ' WHERE ', id1, ' = (%s) AND ', id2, ' = (%s);"'])
-        result = coincoin(conn, sql_str, payload_str)
+        sql_str = ''.join(['SELECT ', id1, ',', id2, ' FROM ', table, ' WHERE ', id1, ' = (%s) AND ', id2, ' = (%s);'])
+        result = execute_sql(conn, sql_str, payload)
         log.debug('select: {}'.format(result))
 
-        if result is None:
-            sql_str = ''.join(['"INSERT INTO ', table, '(', id1, ',', id2, ') VALUES (%s, %s) RETURNING ', id1, ',', id2, ';"'])
-            result = coincoin(conn, sql_str, payload_str, commit=True)
+        if result is None and insert is True:
+            sql_str = ''.join(['INSERT INTO ', table, '(', id1, ',', id2, ') VALUES (%s, %s) RETURNING ', id1, ',', id2, ';'])
+            result = execute_sql(conn, sql_str, payload, commit=True)
             log.debug('insert: {}'.format(result))
 
     return result
@@ -131,7 +131,8 @@ def load_yaml_file(yamlfile):
 if __name__ == '__main__':
     """
         pd.read_csv autodetecte des types qui sont ensuite poussés vers la base,
-        je reviens sur un open simple (de toute façon, c'est du ligne à ligne)
+        et ça bloque à l'insert. LT: je reviens sur un open simple (de toute façon,
+        c'est du ligne à ligne, ça va pas plus vite)
     """
 
     args = get_args()
@@ -147,7 +148,7 @@ if __name__ == '__main__':
         log.debug('input: {}'.format(fichier))
     else:
         log.warning('no input file!')
-        exit(1)
+        sys.exit(1)
 
     # prepare yaml dictionnaries
     CLUSTERS = load_yaml_file(CLUSTERS_FILE)
@@ -169,199 +170,71 @@ if __name__ == '__main__':
 
             with conn:
                 # queue
-                idQueue = select_or_insert(conn, table='queues', id_name='id_queue', name='queue_name', payload=line['qname'])
-                """
-                sql = ("SELECT id_queue FROM queues WHERE queue_name LIKE (%s);")
-                data = (line['qname'],)
-                idQueue = coincoin(conn, sql, data)
-                log.debug('select: {}'.format(idQueue))
-
-                if idQueue is None:
-                    sql = ("INSERT INTO queues(queue_name) VALUES (%s) RETURNING id_queue;")
-                    data = (line['qname'],)
-                    idQueue = coincoin(conn, sql, data, commit=True)
-                    log.debug('insert: {}'.format(idQueue))
-                log.debug('idQueue: {}'.format(idQueue))
-                """
+                idQueue = select_or_insert(conn, table='queues', id_name='id_queue', name='queue_name', payload=[line['qname']])
 
                 # host
-                idHost = select_or_insert(conn, table='hosts', id_name='id_host', name='hostname', payload=line['host'])
-                """
-                sql = ("SELECT id_host FROM hosts WHERE hostname LIKE (%s);")
-                data = (line['host'],)
-                idHost = coincoin(conn, sql, data)
-                log.debug('select: {}'.format(idHost))
-
-                if idHost is None:
-                    sql = ("INSERT INTO hosts(hostname) VALUES (%s) RETURNING id_host;")
-                    data = (line['host'],)
-                    idHost = coincoin(conn, sql, data, commit=True)
-                    log.debug('insert: {}'.format(idHost))
-                log.debug('idHost: {}'.format(idHost))
-                """
+                idHost = select_or_insert(conn, table='hosts', id_name='id_host', name='hostname', payload=[line['host']])
 
                 # group
-                idGroup = select_or_insert(conn, table='groupes', id_name='id_groupe', name='group_name', payload=line['group'])
-                """
-                sql = ("SELECT id_groupe FROM groupes WHERE group_name LIKE (%s);")
-                data = (line['group'],)
-                idGroup = coincoin(conn, sql, data)
-                log.debug('select: {}'.format(idGroup))
-
-                if idGroup is None:
-                    sql = ("INSERT INTO groupes(group_name) VALUES (%s) RETURNING id_groupe;")
-                    data = (line['group'],)
-                    idGroup = coincoin(conn, sql, data, commit=True)
-                    log.debug('insert: {}'.format(idGroup))
-                log.debug('idGroup: {}'.format(idGroup))
-                """
+                idGroup = select_or_insert(conn, table='groupes', id_name='id_groupe', name='group_name', payload=[line['group']])
 
                 # user/login/owner
-                idUser = select_or_insert(conn, table='users', id_name='id_user', name='login', payload=line['owner'])
-                """
-                sql = ("SELECT id_user FROM users WHERE login LIKE (%s);")
-                data = (line['owner'],)
-                idUser = coincoin(conn, sql, data)
-                log.debug('select: {}'.format(idUser))
-
-                if idUser is None:
-                    sql = ("INSERT INTO users(login) VALUES (%s) RETURNING id_user;")
-                    data = (line['owner'],)
-                    idUser = coincoin(conn, sql, data, commit=True)
-                    log.debug('insert: {}'.format(idUser))
-                log.debug('idUser: {}'.format(idUser))
-                """
+                idUser = select_or_insert(conn, table='users', id_name='id_user', name='login', payload=[line['owner']])
 
                 # hosts_in_queues
-                newload = ''.join([idQueue, ',', idHost])
+                newload = [idQueue, idHost]
                 id_HostinQueue = select_or_insert(conn, table='hosts_in_queues', id_name=['id_queue', 'id_host'], payload=newload, multi=True)
-                """
-                sql = ("SELECT id_queue, id_host FROM hosts_in_queues WHERE id_queue = (%s) AND id_host = (%s);")
-                data = (idQueue, idHost)
-                id_HostinQueue = coincoin(conn, sql, data)
-                log.debug('select: {}'.format(id_HostinQueue))
-
-                if id_HostinQueue is None:
-                    sql = ("INSERT INTO hosts_in_queues(id_queue, id_host) VALUES (%s, %s) RETURNING id_queue, id_host;")
-                    data = (idQueue, idHost)
-                    id_HostinQueue = coincoin(conn, sql, data, commit=True)
-                    log.debug('insert: {}'.format(id_HostinQueue))
-                log.debug('id_HostinQueue : {}'.format(id_HostinQueue))
-                """
 
                 # users_in_groupes
-                newload = ''.join([idGroup, ',', idUser])
+                newload = [idGroup, idUser]
                 id_HostinQueue = select_or_insert(conn, table='users_in_groupes', id_name=['id_groupe', 'id_user'], payload=newload, multi=True)
-                """
-                sql = ("SELECT id_groupe, id_user FROM users_in_groupes WHERE id_groupe = (%s) AND id_user = (%s);")
-                data = (idGroup, idUser)
-                id_UserinGroupe = coincoin(conn, sql, data)
-                log.debug('select: {}'.format(id_UserinGroupe))
-
-                if id_UserinGroupe is None:
-                    sql = ("INSERT INTO users_in_groupes(id_groupe, id_user) VALUES (%s, %s) RETURNING id_groupe, id_user;")
-                    data = (idGroup, idUser)
-                    id_UserinGroupe = coincoin(conn, sql, data, commit=True)
-                    log.debug('insert: {}'.format(id_UserinGroupe))
-                log.debug('id_UserinGroupe: {}'.format(id_UserinGroupe))
-                """
 
                 # hosts_in_clusters
                 try:
                     cluster = [key for key in CLUSTERS for value in CLUSTERS[key].split() if value in line['host']][0]
                 except IndexError:
+                    # fallback to default
                     cluster = 'default'
 
-                # pas d'insert!
-                # idCluster = select_or_insert(conn, table='clusters', id_name='id_cluster', name='cluster_name', payload=cluster)
-                sql = ("SELECT id_cluster FROM clusters WHERE cluster_name LIKE (%s);")
-                data = (cluster,)
-                idCluster = coincoin(conn, sql, data)
-                # log.debug('select: {}'.format(idCluster))
+                idCluster = select_or_insert(conn, table='clusters', id_name='id_cluster', name='cluster_name', payload=[cluster], insert=False)
 
                 if idCluster:
-                    newload = ''.join([idCluster, ',', idHost])
+                    newload = [idCluster, idHost]
                     id_HostinCluster = select_or_insert(conn, table='hosts_in_clusters', id_name=['id_cluster', 'id_host'], payload=newload, multi=True)
-                    """
-                    sql = ("SELECT id_cluster, id_host FROM hosts_in_clusters WHERE id_cluster = (%s) AND id_host = (%s) ;")
-                    data = (idCluster, idHost)
-                    id_HostinCluster = coincoin(conn, sql, data)
-                    log.debug('select: {}'.format(id_HostinCluster))
-
-                    if id_HostinCluster is None:
-                        sql = ("INSERT INTO hosts_in_clusters(id_cluster, id_host) VALUES (%s, %s) RETURNING id_cluster, id_host;")
-                        data = (idCluster, idHost)
-                        id_HostinCluster = coincoin(conn, sql, data, commit=True)
-                        log.debug('insert: {}'.format(id_HostinCluster))
-                log.debug('id_HostinCluster: {}'.format(id_HostinCluster))
-                    """
 
                 # groupes_in_metagroupes
                 try:
                     metagroupe_group = [key for key in METAGROUPES for value in METAGROUPES[key].split() if value in line['group']][0]
                 except IndexError:
+                    # fallback to default
                     metagroupe_group = 'autres_ENS'
 
-                # pas d'insert!
-                # idMetaGroup = select_or_insert(conn, table='metagroupes', id_name='id_metagroupe', name='meta_name', payload=metagroupe_group)
-                sql = ("SELECT id_metagroupe FROM metagroupes WHERE meta_name LIKE (%s);")
-                data = (metagroupe_group,)
-                idMetaGroup = coincoin(conn, sql, data)
-                # log.debug('select: {}'.format(idMetaGroup))
+                idMetaGroup = select_or_insert(conn, table='metagroupes', id_name='id_metagroupe', name='meta_name', payload=[metagroupe_group], insert=False)
 
                 if idMetaGroup:
-                    newload = ''.join([idMetaGroup, ',', idGroup])
+                    newload = [idMetaGroup, idGroup]
                     id_GroupinMeta = select_or_insert(conn, table='groupes_in_metagroupes', id_name=['id_metagroupe', 'id_groupe'], payload=newload, multi=True)
-                    """
-                    sql = ("SELECT id_metagroupe, id_groupe FROM groupes_in_metagroupes WHERE id_metagroupe = (%s) AND id_groupe = (%s);")
-                    data = (idMetaGroup, idGroup)
-                    id_GroupinMeta = coincoin(conn, sql, data)
-                    log.debug('select: {}'.format(id_GroupinMeta))
-
-                    if id_GroupinMeta is None:
-                        sql = ("INSERT INTO groupes_in_metagroupes(id_metagroupe, id_groupe) VALUES (%s, %s) RETURNING id_metagroupe, id_groupe;")
-                        data = (idMetaGroup, idGroup)
-                        id_GroupinMeta = coincoin(conn, sql, data, commit=True)
-                        log.debug('insert: {}'.format(id_GroupinMeta))
-                log.debug('id_GroupinMeta: {}'.format(id_GroupinMeta))
-                    """
 
                 # users_in_metagroupes
+                # il y a trés peu d'users dans les metagroupes
                 try:
                     metagroupe_user = [key for key in METAGROUPES for value in METAGROUPES[key].split() if value in line['owner']][0]
-                    # pas d'insert!
-                    sql = ("SELECT id_metagroupe FROM metagroupes WHERE meta_name LIKE (%s);")
-                    data = (metagroupe_user,)
-                    idMetaUser = coincoin(conn, sql, data)
-                    # log.debug('select: {}'.format(idMetaUser))
+
+                    idMetaUser = select_or_insert(conn, table='metagroupes', id_name='id_metagroupe', name='meta_name', payload=[metagroupe_user], insert=False)
 
                     if idMetaUser:
-                        newload = ''.join([idMetaUser, ',', idUser])
+                        newload = [idMetaUser, idUser]
                         id_UserinMeta = select_or_insert(conn, table='users_in_metagroupes', id_name=['id_metagroupe', 'id_user'], payload=newload, multi=True)
-                        """
-                        sql = ("SELECT id_metagroupe, id_user FROM users_in_metagroupes WHERE id_metagroupe = (%s) AND id_user = (%s);")
-                        data = (idMetaUser, idUser)
-                        id_UserinMeta = coincoin(conn, sql, data)
-                        log.debug('select: {}'.format(id_UserinMeta))
-
-                        if id_UserinMeta is None:
-                            sql = ("INSERT INTO users_in_metagroupes(id_metagroupe, id_user) VALUES (%s, %s) RETURNING id_metagroupe, id_user;")
-                            data = (idMetaUser, idUser)
-                            id_UserinMeta = coincoin(conn, sql, data, commit=True)
-                            log.debug('insert: {}'.format(id_UserinMeta))
-                    log.debug('id_UserinMeta: {}'.format(id_UserinMeta))
-                        """
 
                 except IndexError:
-                    # là, par contre, c'est pas obligatoire
+                    # no default, simply move on
                     pass
 
                 # finally, job
-                # FIXME: select d'abord, insert ensuite
 
                 sql = ("SELECT id_queue, id_host, id_user, job_id, start_time, end_time FROM job_ WHERE id_queue = (%s) AND id_host = (%s) AND id_user = (%s) AND job_id = (%s) AND start_time = (%s) AND end_time = (%s);")
-                data = (idQueue[0], idHost[0], idUser[0], line['job_id'], line['start'], line['end'])
-                jobExist = coincoin(conn, sql, data)
+                data = [idQueue[0], idHost[0], idUser[0], line['job_id'], line['start'], line['end']]
+                jobExist = execute_sql(conn, sql, data)
 
                 if jobExist is None:
                     sql = (""" INSERT INTO job_(id_queue,
@@ -405,7 +278,7 @@ if __name__ == '__main__':
                                     %s,
                                     %s)
                             RETURNING job_id; """)
-                    data = (idQueue[0],
+                    data = [idQueue[0],
                             idHost[0],
                             idGroup[0],
                             idUser[0],
@@ -425,37 +298,12 @@ if __name__ == '__main__':
                             line['mem'],
                             line['io'],
                             line['maxvmem'],
-                            )
+                            ]
 
-                    jobCommit = coincoin(conn, sql, data, commit=True)
+                    jobCommit = execute_sql(conn, sql, data, commit=True)
                     log.info('commited: {}, {}, {}'.format(line['job_id'], line['qname'], line['host']))
 
                 else:
                     log.info('job {} already exist in database'.format(line['job_id']))
 
     conn.close()
-
-
-"""
-                        str(line['job_name']),
-                        int(line['job_id']),
-                        int(line['submit_time']),
-                        int(line['start']),
-                        int(line['end']),
-                        int(line['fail']),
-                        int(line['exit_status']),
-                        float(line['ru_wallclock']),
-                        float(line['ru_utime']),
-                        float(line['ru_stime']),
-                        str(line['project']),
-                        int(line['slots']),
-                        float(line['cpu']),
-                        float(line['mem']),
-                        float(line['io']),
-                        float(line['maxvmem'],)
-
-"""
-
-"""
-HEADER_LIST = ['qname', 'host', 'group', 'owner', 'job_name', 'job_id', 'account', 'priority', 'submit_time', 'start', 'end', 'fail', 'exit_status', 'ru_wallclock', 'ru_utime', 'ru_stime', 'ru_maxrss', 'ru_ixrss', 'ru_ismrss', 'ru_idrss', 'ru_isrss', 'ru_minflt', 'ru_majflt', 'ru_nswap', 'ru_inblock', 'ru_oublock', 'ru_msgsnd', 'ru_msgrcv', 'ru_nsignals', 'ru_nvcsw', 'ru_nivcsw', 'project', 'department', 'granted_pe', 'slots', 'task_number', 'cpu', 'mem', 'io', 'category', 'iow', 'pe_taskid', 'maxvmem', 'arid', 'ar_submission_time']
-"""
