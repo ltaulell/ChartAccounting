@@ -218,7 +218,7 @@ if __name__ == '__main__':
                 # users_in_metagroupes
                 # il y a trés peu d'users dans les metagroupes
                 try:
-                    metagroupe_user = [key for key in METAGROUPES for value in METAGROUPES[key].split() if value in line['owner']][0]
+                    metagroupe_user = [key for key in METAGROUPES for value in METAGROUPES[key].split() if value == line['owner']][0]
 
                     idMetaUser = select_or_insert(conn, table='metagroupes', id_name='id_metagroupe', name='meta_name', payload=[metagroupe_user], insert=False)
 
