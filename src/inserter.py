@@ -57,16 +57,16 @@ def get_args(helper=False):
 
 
 def decomment(fichiercsv):
-    """ do not yield row containing '#' in first place """
+    """ do not yield row containing '#' at first place
+    BUT, there can be '#' in actual job_name ! (/o\ users...) """
     for row in fichiercsv:
-        raw = row.split('#')[0].strip()
-        if raw:
-            yield raw
+        if not row.startswith('#'):
+            yield row
 
 
 def execute_sql(connexion, commande, payload, commit=False):
     """ execute commande, always return id
-    SQL inserts MUST returning ids """
+    SQL inserts MUST returning ids, else fetchone() will fail """
 
     with connexion.cursor() as cursor:
         cursor.execute(commande, payload)
@@ -163,7 +163,8 @@ if __name__ == '__main__':
     # conn.set_session(isolation_level=psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE, autocommit=True)
     log.debug(conn)
 
-    with open(fichier, "r", encoding='latin1') as csvfile:
+    with open(fichier, "r", encoding='utf-8') as csvfile:
+        # encodings: us-ascii < latin1 < utf-8
         reader = csv.DictReader(decomment(csvfile), fieldnames=HEADER_LIST, delimiter=':')
         for line in reader:
             log.debug('{}, {}, {}, {}'.format(line['qname'], line['host'], line['group'], line['cpu']))
