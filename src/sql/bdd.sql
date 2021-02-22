@@ -86,7 +86,7 @@ create table IF NOT EXISTS job_ (
     FOREIGN KEY (id_host) REFERENCES hosts (id_host),
     FOREIGN KEY (id_groupe) REFERENCES groupes (id_groupe),
     FOREIGN KEY (id_user) REFERENCES users (id_user),
-    job_name varchar(128) NOT NULL,
+    job_name varchar(255) NOT NULL,
     job_id integer NOT NULL,
     submit_time bigint NOT NULL,
     start_time bigint NOT NULL,
