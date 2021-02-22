@@ -20,6 +20,9 @@ TODO/FIXME:
     https://www.psycopg.org/docs/usage.html#thread-safety
     https://www.psycopg.org/docs/advanced.html#green-support
 
+- except(s)
+    https://www.psycopg.org/docs/errors.html
+
 """
 
 import argparse
@@ -59,6 +62,7 @@ def get_args(helper=False):
 def decomment(fichiercsv):
     """ do not yield row containing '#' at first place
     BUT, there can be '#' in actual job_name ! (/o\ users...) """
+    """ TODO/FIXME enclose in try/except with UnicodeDecodeError, and pass on """
     for row in fichiercsv:
         if not row.startswith('#'):
             yield row
@@ -163,8 +167,10 @@ if __name__ == '__main__':
     # conn.set_session(isolation_level=psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE, autocommit=True)
     log.debug(conn)
 
-    with open(fichier, "r", encoding='utf-8') as csvfile:
+    with open(fichier, "r", encoding='latin1') as csvfile:
         # encodings: us-ascii < latin1 < utf-8
+        # but read with 'latin1' because of
+        # "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xc3..."
         reader = csv.DictReader(decomment(csvfile), fieldnames=HEADER_LIST, delimiter=':')
         for line in reader:
             log.debug('{}, {}, {}, {}'.format(line['qname'], line['host'], line['group'], line['cpu']))
