@@ -294,7 +294,7 @@ if __name__ == '__main__':
                                     %s,
                                     %s,
                                     %s)
-                            RETURNING job_id; """)
+                            RETURNING id_job_; """)
                     data = [idQueue[0],
                             idHost[0],
                             idGroup[0],
