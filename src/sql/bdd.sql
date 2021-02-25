@@ -78,6 +78,7 @@ create table IF NOT EXISTS users_in_metagroupes (
 
 -- table centrale
 create table IF NOT EXISTS job_ (
+    id_job_ bigserial NOT NULL,
     id_queue bigint NOT NULL,
     id_host bigint NOT NULL,
     id_groupe bigint NOT NULL,
