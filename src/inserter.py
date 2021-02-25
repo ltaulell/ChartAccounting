@@ -15,10 +15,12 @@ go easy, go simple.
 TODO/FIXME:
 
 - find a way around transaction(s) ?
+    => done (une seul conn)
 
 - yielder/getter ? -> multiprocessing inserts ? (maybe faster?)
     https://www.psycopg.org/docs/usage.html#thread-safety
     https://www.psycopg.org/docs/advanced.html#green-support
+    => bof
 
 - except(s)
     https://www.psycopg.org/docs/errors.html
@@ -71,13 +73,21 @@ def decomment(fichiercsv):
 def execute_sql(connexion, commande, payload, commit=False):
     """ execute commande, always return id
     SQL inserts MUST returning ids, else fetchone() will fail """
-
-    with connexion.cursor() as cursor:
-        cursor.execute(commande, payload)
-        if commit:
-            connexion.commit()
-        log.debug(cursor.statusmessage)
-        return cursor.fetchone()
+    try:
+        with connexion.cursor() as cursor:
+            cursor.execute(commande, payload)
+            if commit:
+                connexion.commit()
+            log.debug(cursor.statusmessage)
+            return cursor.fetchone()
+    except psycopg2.errors.StringDataRightTruncation as e:
+        # if job_name or project is too long, ignore job, there's a problem.
+        log.warning('insertion error: {}'.format(e))
+        pass
+    except psycopg2.errors.NotNullViolation as e:
+        # if any of 'NOT NULL' field is null, ignore job, there's a problem.
+        log.warning('notnull error: {}'.format(e))
+        pass
 
 
 def select_or_insert(conn, table, id_name, payload, name=None, multi=False, insert=True):
