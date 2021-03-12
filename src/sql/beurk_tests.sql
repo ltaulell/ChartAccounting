@@ -64,13 +64,46 @@ WHERE job_.id_user = users.id_user
     AND job_.exit_status != 0
 GROUP BY users.login ;
 
--- nb de jobs réussis d'un user (cmichel)
+-- nb de jobs réussis d'un user (cmichel, 2012)
 SELECT users.login, COUNT(job_.id_job_)
 FROM job_, users
 WHERE job_.id_user = users.id_user
     AND users.login = 'cmichel'
     AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
 GROUP BY users.login ;
+-- nb de jobs réussis d'un groupe (chimie, 2012)
+SELECT groupes.group_name, COUNT(job_.id_job_)
+FROM job_, groupes
+WHERE job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY groupes.id_groupe ;
+
+
+-- composite
+-- nb de jobs réussis, nb d'heures d'un user (cmichel, 2012)
+SELECT users.login, COUNT(job_.id_job_) AS nb_job, SUM(job_.cpu) AS sum_cpu
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY users.login ;
+-- nb de jobs réussis, nb d'heures d'un groupe (chimie, 2012)
+SELECT groupes.group_name, COUNT(job_.id_job_) AS nb_job, SUM(job_.cpu) AS sum_cpu
+FROM job_, groupes
+WHERE job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY groupes.id_groupe ;
+
 
 -- total utime d'un groupe (icbms)
 SELECT groupes.group_name, sum(job_.ru_utime)
@@ -132,12 +165,33 @@ WHERE job_.id_groupe = groupes.id_groupe
     AND groupes.group_name = 'chimie'
 GROUP BY groupes.group_name ;
 
+-- min slots (sur tous les jobs) d'un groupe (chimie)
+SELECT groupes.group_name, min(job_.slots)
+FROM job_, groupes
+WHERE job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY groupes.group_name ;
+
 -- average slots (sur tous les jobs) d'un groupe (chimie)
 SELECT groupes.group_name, avg(job_.slots)
 FROM job_, groupes
 WHERE job_.id_groupe = groupes.id_groupe
     AND groupes.group_name = 'chimie'
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
 GROUP BY groupes.group_name ;
+
+-- average slots (sur tous les jobs) d'un groupe (chimie)
+SELECT groupes.group_name, max(job_.slots)
+FROM job_, groupes
+WHERE job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY groupes.group_name ;
+
 
 -- average slots (sur tous les jobs réussis) pour tous les groupes
 SELECT groupes.group_name, avg(job_.slots) AS avg_slots, count(job_.id_job_) AS nb_job
