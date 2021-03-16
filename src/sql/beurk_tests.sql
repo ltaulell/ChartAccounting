@@ -39,6 +39,7 @@ ALTER TABLE job_ ALTER COLUMN maxvmem DROP NOT NULL;
 -- epoch (2022-01-01) 1640995200
 
 -- # https://sql.sh/cours/jointures
+-- # https://www.postgresqltutorial.com/postgresql-count-function/
 
 -- total utime d'un user (cmichel)
 SELECT users.login, sum(job_.ru_utime)
@@ -54,16 +55,6 @@ WHERE job_.id_user = users.id_user
     AND users.login = 'cmichel' 
 GROUP BY users.login ;
 
--- nb de jobs plantés d'un user (cmichel)
--- # https://www.postgresqltutorial.com/postgresql-count-function/
-SELECT users.login, COUNT(job_.id_job_)
-FROM job_, users
-WHERE job_.id_user = users.id_user
-    AND users.login = 'cmichel'
-    AND job_.failed != 0
-    AND job_.exit_status != 0
-GROUP BY users.login ;
-
 -- nb de jobs réussis d'un user (cmichel, 2012)
 SELECT users.login, COUNT(job_.id_job_)
 FROM job_, users
@@ -73,6 +64,34 @@ WHERE job_.id_user = users.id_user
     AND job_.start_time >= 1325376000
     AND job_.start_time <= 1356998400
 GROUP BY users.login ;
+-- nb de jobs plantés d'un user (cmichel, 2012)
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND job_.failed != 0
+    AND job_.exit_status != 0
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY users.login ;
+
+-- max, avg, min for ru_wallclock, user cmichel, 2012
+SELECT
+    users.login,
+    MAX(job_.ru_wallclock) AS max_wall,
+    AVG(job_.ru_wallclock) AS avg_wall,
+    MIN(job_.ru_wallclock) AS min_wall
+FROM 
+    job_, users
+WHERE
+    job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY users.login ;
+
+
 -- nb de jobs réussis d'un groupe (chimie, 2012)
 SELECT groupes.group_name, COUNT(job_.id_job_)
 FROM job_, groupes
@@ -83,8 +102,18 @@ WHERE job_.id_groupe = groupes.id_groupe
     AND job_.start_time <= 1356998400
 GROUP BY groupes.id_groupe ;
 
+-- nb de jobs plantés d'un groupe (chimie, 2012)
+SELECT groupes.group_name, COUNT(job_.id_job_)
+FROM job_, groupes
+WHERE job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND job_.failed != 0
+    AND job_.exit_status != 0
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY groupes.id_groupe ;
 
--- composite
+-- composite cmichel vs chimie
 -- nb de jobs réussis, nb d'heures d'un user (cmichel, 2012)
 SELECT users.login, COUNT(job_.id_job_) AS nb_job, SUM(job_.cpu) AS sum_cpu
 FROM job_, users
@@ -94,16 +123,17 @@ WHERE job_.id_user = users.id_user
     AND job_.start_time >= 1325376000
     AND job_.start_time <= 1356998400
 GROUP BY users.login ;
--- nb de jobs réussis, nb d'heures d'un groupe (chimie, 2012)
+-- nb de jobs réussis, nb d'heures d'un groupe (chimie, 2012) moins un user particulier
 SELECT groupes.group_name, COUNT(job_.id_job_) AS nb_job, SUM(job_.cpu) AS sum_cpu
-FROM job_, groupes
+FROM job_, groupes, users
 WHERE job_.id_groupe = groupes.id_groupe
     AND groupes.group_name = 'chimie'
     AND (job_.failed = 0 OR job_.exit_status = 0)
     AND job_.start_time >= 1325376000
     AND job_.start_time <= 1356998400
+    AND job_.id_user = users.id_user
+    AND users.login != 'cmichel'
 GROUP BY groupes.id_groupe ;
-
 
 -- total utime d'un groupe (icbms)
 SELECT groupes.group_name, sum(job_.ru_utime)
@@ -117,8 +147,8 @@ SELECT groupes.group_name, sum(job_.ru_utime) AS sum_utime, count(job_.id_job_) 
 FROM job_, groupes
 WHERE job_.id_groupe = groupes.id_groupe
     AND (job_.failed = 0 OR job_.exit_status = 0)
-    -- AND job_.start_time >= 1325289600
-    -- AND job_.start_time <= 1356912000
+    -- AND job_.start_time >= 1325376000
+    -- AND job_.start_time <= 1356998400
 GROUP BY groupes.group_name
 ORDER BY sum_utime DESC ;
 
@@ -127,8 +157,8 @@ SELECT groupes.group_name, sum(job_.cpu) AS sum_cpu, count(job_.id_job_) AS nb_j
 FROM job_, groupes
 WHERE job_.id_groupe = groupes.id_groupe
     AND (job_.failed = 0 OR job_.exit_status = 0)
-    -- AND job_.start_time >= 1325289600
-    -- AND job_.start_time <= 1356912000
+    -- AND job_.start_time >= 1325376000
+    -- AND job_.start_time <= 1356998400
 GROUP BY groupes.group_name
 ORDER BY sum_cpu DESC ;
 
@@ -137,17 +167,17 @@ ORDER BY sum_cpu DESC ;
 SELECT sum(job_.cpu)
 FROM job_, groupes
 WHERE job_.id_groupe = groupes.id_groupe
-  AND groupes.group_name = 'chimie'
-  AND job_.start_time >= 1325289600
-  AND job_.start_time <= 1356912000
+    AND groupes.group_name = 'chimie'
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
   ;
 
 -- total cpu, par groupe, entre 01-01-2012 et 31-12-2012 (start_time), plus rapide
 SELECT groupes.group_name, sum(job_.cpu) AS sum_cpu
 FROM job_, groupes
 WHERE job_.id_groupe = groupes.id_groupe
-  AND start_time >= 1325289600
-  AND start_time <= 1356912000
+    AND start_time >= 1325376000
+    AND start_time <= 1356998400
 GROUP BY groupes.group_name
 ORDER BY sum_cpu DESC;
 
@@ -173,7 +203,6 @@ WHERE job_.id_groupe = groupes.id_groupe
     AND job_.start_time >= 1325376000
     AND job_.start_time <= 1356998400
 GROUP BY groupes.group_name ;
-
 -- average slots (sur tous les jobs) d'un groupe (chimie)
 SELECT groupes.group_name, avg(job_.slots)
 FROM job_, groupes
@@ -182,8 +211,7 @@ WHERE job_.id_groupe = groupes.id_groupe
     AND job_.start_time >= 1325376000
     AND job_.start_time <= 1356998400
 GROUP BY groupes.group_name ;
-
--- average slots (sur tous les jobs) d'un groupe (chimie)
+-- max slots (sur tous les jobs) d'un groupe (chimie)
 SELECT groupes.group_name, max(job_.slots)
 FROM job_, groupes
 WHERE job_.id_groupe = groupes.id_groupe
@@ -263,10 +291,8 @@ WHERE j.id_host = ANY
 GROUP BY h.hostname, j.id_host
 ORDER BY sum_value DESC
 LIMIT 10 ;
--- pareil, plus rapide
-SELECT hosts.hostname, 
-    sum(job_.cpu) AS sum_cpu, 
-    sum(job_.ru_utime) AS sum_utime
+-- pareil, plus rapide (X5, 2012)
+SELECT hosts.hostname, sum(job_.cpu) AS sum_cpu
 FROM job_,
     hosts,
     hosts_in_clusters,
@@ -274,7 +300,9 @@ FROM job_,
 WHERE job_.id_host = hosts.id_host AND 
     hosts.id_host = hosts_in_clusters.id_host AND
     hosts_in_clusters.id_cluster = clusters.id_cluster AND
-    clusters.cluster_name = 'E5'
+    clusters.cluster_name = 'X5'
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
 GROUP BY hosts.hostname, job_.id_host
 ORDER BY sum_cpu DESC
 LIMIT 10 ;
@@ -300,3 +328,71 @@ ORDER BY
   sum_cpu_value DESC
 LIMIT 10;
 
+-- top ten queues by max cpu usage, 2012
+SELECT
+    queues.queue_name,
+    max(job_.cpu) as max_cpu
+FROM 
+    job_, queues
+WHERE
+    job_.id_queue = queues.id_queue
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY queues.queue_name
+ORDER BY max_cpu DESC
+LIMIT 10;
+
+-- max, avg, min for ru_wallclock, queue r815lin128ib, 2012
+SELECT
+    queues.queue_name,
+    MAX(job_.ru_wallclock) AS max_wall,
+    AVG(job_.ru_wallclock) AS avg_wall,
+    MIN(job_.ru_wallclock) AS min_wall
+FROM 
+    job_, queues
+WHERE
+    job_.id_queue = queues.id_queue
+    AND queues.queue_name = 'r815lin128ib'
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY queues.queue_name ;
+
+-- nb jobs réussis, queue r815lin128ib, 2012
+SELECT
+    queues.queue_name,
+    COUNT(job_.id_job_)
+FROM 
+    job_, queues
+WHERE
+    job_.id_queue = queues.id_queue
+    AND queues.queue_name = 'r815lin128ib'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY queues.queue_name ;
+-- nb jobs failed, queue r815lin128ib, 2012
+SELECT
+    queues.queue_name,
+    COUNT(job_.id_job_)
+FROM 
+    job_, queues
+WHERE
+    job_.id_queue = queues.id_queue
+    AND queues.queue_name = 'r815lin128ib'
+    AND job_.failed != 0
+    AND job_.exit_status != 0
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY queues.queue_name ;
+-- total jobs, queue r815lin128ib, 2012
+SELECT
+    queues.queue_name,
+    COUNT(job_.id_job_)
+FROM 
+    job_, queues
+WHERE
+    job_.id_queue = queues.id_queue
+    AND queues.queue_name = 'r815lin128ib'
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY queues.queue_name ;
