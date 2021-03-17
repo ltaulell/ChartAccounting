@@ -353,6 +353,7 @@ FROM
 WHERE
     job_.id_queue = queues.id_queue
     AND queues.queue_name = 'r815lin128ib'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
     AND job_.start_time >= 1325376000
     AND job_.start_time <= 1356998400
 GROUP BY queues.queue_name ;
@@ -396,3 +397,101 @@ WHERE
     AND job_.start_time >= 1325376000
     AND job_.start_time <= 1356998400
 GROUP BY queues.queue_name ;
+
+-- au dessus de avg
+SELECT 
+    queues.queue_name, COUNT(job_.id_job_)
+FROM
+    job_, queues
+WHERE 
+    job_.id_queue = queues.id_queue
+    AND queues.queue_name = 'r815lin128ib'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    -- avg donné par requête imbriquée
+    AND job_.ru_wallclock > (
+    SELECT 
+        AVG(job_.ru_wallclock)
+    FROM 
+        job_, queues
+    WHERE 
+        job_.id_queue = queues.id_queue
+        AND queues.queue_name = 'r815lin128ib'
+        AND (job_.failed = 0 OR job_.exit_status = 0)
+        AND job_.start_time >= 1325376000
+        AND job_.start_time <= 1356998400
+    GROUP BY queues.queue_name
+    )
+GROUP BY queues.queue_name ;
+-- en dessous de avg
+SELECT
+    queues.queue_name, COUNT(job_.id_job_)
+FROM
+    job_, queues
+WHERE
+    job_.id_queue = queues.id_queue
+    AND queues.queue_name = 'r815lin128ib'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    -- avg donné par requête imbriquée
+    AND job_.ru_wallclock < (
+    SELECT
+        AVG(job_.ru_wallclock)
+    FROM
+        job_, queues
+    WHERE
+        job_.id_queue = queues.id_queue
+        AND queues.queue_name = 'r815lin128ib'
+        AND (job_.failed = 0 OR job_.exit_status = 0)
+        AND job_.start_time >= 1325376000
+        AND job_.start_time <= 1356998400
+    GROUP BY queues.queue_name
+    )
+GROUP BY queues.queue_name ;
+
+-- nb jobs réussis, queue r815lin128ib, 2012, durée inférieure à 1 jour (86400)
+-- NE FONCTIONNE PAS !
+SELECT
+    queues.queue_name,
+    COUNT(job_.id_job_)
+FROM 
+    job_, queues
+WHERE
+    job_.id_queue = queues.id_queue
+    AND queues.queue_name = 'r815lin128ib'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY queues.queue_name
+HAVING job_.ru_wallclock < 86400 ;
+-- NE FONCTIONNE PAS !
+
+
+-- users in multiple groups
+SELECT
+    users.login
+FROM
+    users_in_groupes, users, groupes
+WHERE
+    users.id_user = users_in_groupes.id_user
+    AND groupes.id_groupe = users_in_groupes.id_groupe
+GROUP BY users.login
+HAVING count(users_in_groupes.id_user) > 1 ;
+
+-- les groupes qui correspondent, pour chaque résultat
+SELECT
+    users.login, groupes.group_name
+FROM
+    users_in_groupes, users, groupes
+WHERE
+    users.id_user = users_in_groupes.id_user
+    AND groupes.id_groupe = users_in_groupes.id_groupe
+    -- voir requête précédente
+    AND users.login = %login%
+GROUP BY groupes.group_name, users.login 
+ORDER BY groupes.group_name ;
+
+
+
