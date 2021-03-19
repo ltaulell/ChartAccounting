@@ -174,24 +174,30 @@ ORDER BY sum_cpu DESC
 LIMIT 10 ;
 
 
-
-
 -- nb jobs réussis, queue r815lin128ib, 2012, durée inférieure à 1 jour (86400)
--- NE FONCTIONNE PAS !
-SELECT
-    queues.queue_name,
+SELECT queues.queue_name,
     COUNT(job_.id_job_)
-FROM 
-    job_, queues
-WHERE
+FROM job_, queues
+WHERE 
     job_.id_queue = queues.id_queue
     AND queues.queue_name = 'r815lin128ib'
     AND (job_.failed = 0 OR job_.exit_status = 0)
     AND job_.start_time >= 1325376000
     AND job_.start_time <= 1356998400
-GROUP BY queues.queue_name
-HAVING job_.ru_wallclock < 86400 ;
--- NE FONCTIONNE PAS !
+    AND job_.ru_wallclock < 86400
+GROUP BY queues.queue_name ;
+-- same-same
+SELECT queues.queue_name, COUNT(job_.id_job_)
+FROM queues
+JOIN job_ ON job_.id_queue = queues.id_queue
+WHERE
+    queues.queue_name = 'r815lin128ib'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND job_.ru_wallclock < 86400
+GROUP BY queues.queue_name ;
+
 
 
 -- users in multiple groups
