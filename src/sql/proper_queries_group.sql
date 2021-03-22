@@ -26,12 +26,12 @@ WHERE job_.id_groupe = groupes.id_groupe
     AND job_.start_time <= 1356998400
 GROUP BY groupes.id_groupe ;
 
--- min, avg, max for ru_wallclock, groupe chimie, 2012
+-- min, avg, max for slots, groupe chimie, 2012
 SELECT 
     groupes.group_name, 
     min(job_.slots),
     avg(job_.slots),
-    max(job_.slots),
+    max(job_.slots)
 FROM 
     job_, groupes 
 WHERE job_.id_groupe = groupes.id_groupe 
@@ -39,6 +39,21 @@ WHERE job_.id_groupe = groupes.id_groupe
     AND job_.start_time >= 1325376000 
     AND job_.start_time <= 1356998400 
 GROUP BY groupes.group_name ;
+
+-- min, avg, max for ru_wallclock, groupe chimie, 2012
+SELECT 
+    groupes.group_name, 
+    min(job_.ru_wallclock),
+    avg(job_.ru_wallclock),
+    max(job_.ru_wallclock)
+FROM 
+    job_, groupes 
+WHERE job_.id_groupe = groupes.id_groupe 
+    AND groupes.group_name = 'chimie' 
+    AND job_.start_time >= 1325376000 
+    AND job_.start_time <= 1356998400 
+GROUP BY groupes.group_name ;
+
 
 -- au dessus de avg, groupe chimie, 2012
 SELECT 
