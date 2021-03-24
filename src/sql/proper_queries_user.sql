@@ -316,3 +316,158 @@ WHERE job_.id_user = users.id_user
     AND job_.maxvmem > 137438953472
 GROUP BY users.login ;
 
+-- slots usage
+-- max, avg, min for slots, user cmichel, 2012
+SELECT
+    users.login,
+    MAX(job_.slots) AS max_slots,
+    AVG(job_.slots) AS avg_slots,
+    MIN(job_.slots) AS min_slots
+FROM 
+    job_, users
+WHERE
+    job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY users.login ;
+-- jobs au dessus de avg(slots), user cmichel, 2012
+SELECT 
+    users.login, COUNT(job_.id_job_)
+FROM 
+    job_, users
+WHERE 
+    job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    -- avg donné par requête imbriquée
+    AND job_.slots > (
+    SELECT 
+        AVG(job_.slots)
+    FROM 
+        job_, users
+    WHERE 
+        job_.id_user = users.id_user
+        AND users.login = 'cmichel'
+        AND (job_.failed = 0 OR job_.exit_status = 0)
+        AND job_.start_time >= 1325376000
+        AND job_.start_time <= 1356998400
+    GROUP BY users.login
+    )
+GROUP BY users.login ;
+-- jobs en dessous de avg(slots), user cmichel, 2012
+SELECT 
+    users.login, COUNT(job_.id_job_)
+FROM 
+    job_, users
+WHERE 
+    job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    -- avg donné par requête imbriquée
+    AND job_.slots < (
+    SELECT 
+        AVG(job_.slots)
+    FROM 
+        job_, users
+    WHERE 
+        job_.id_user = users.id_user
+        AND users.login = 'cmichel'
+        AND (job_.failed = 0 OR job_.exit_status = 0)
+        AND job_.start_time >= 1325376000
+        AND job_.start_time <= 1356998400
+    GROUP BY users.login
+    )
+GROUP BY users.login ;
+-- nb jobs réussis, user cmichel, 2012, slots = 1
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND job_.slots = 1
+GROUP BY users.login ;
+-- nb jobs réussis, user cmichel, 2012, slots entre 2 et 4
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND job_.slots > 1
+    AND job_.slots <= 4
+GROUP BY users.login ;
+-- nb jobs réussis, user cmichel, 2012, slots entre 5 et 8
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND job_.slots > 4
+    AND job_.slots <= 8
+GROUP BY users.login ;
+-- nb jobs réussis, user cmichel, 2012, slots entre 9 et 16
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND job_.slots > 8
+    AND job_.slots <= 16
+GROUP BY users.login ;
+-- nb jobs réussis, user cmichel, 2012, slots entre 17 et 32
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND job_.slots > 16
+    AND job_.slots <= 32
+GROUP BY users.login ;
+-- nb jobs réussis, user cmichel, 2012, slots entre 33 et 64
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND job_.slots > 32
+    AND job_.slots <= 64
+GROUP BY users.login ;
+-- nb jobs réussis, user cmichel, 2012, slots entre 65 et 128
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND job_.slots > 64
+    AND job_.slots <= 128
+GROUP BY users.login ;
+-- nb jobs réussis, user cmichel, 2012, slots > 128
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND job_.slots > 128
+GROUP BY users.login ;
+
