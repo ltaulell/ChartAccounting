@@ -471,3 +471,103 @@ WHERE job_.id_user = users.id_user
     AND job_.slots > 128
 GROUP BY users.login ;
 
+-- temps d'attente
+-- max, avg, min de start_time - submit_time, user cmichel, 2012
+SELECT users.login, 
+    MAX(job_.start_time - job_.submit_time),
+    AVG(job_.start_time - job_.submit_time),
+    MIN(job_.start_time - job_.submit_time)
+FROM 
+    job_, users
+WHERE 
+    job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400 
+GROUP BY users.login ;
+-- jobs au dessus de avg(attente), user cmichel, 2012
+SELECT 
+    users.login, COUNT(job_.id_job_)
+FROM 
+    job_, users
+WHERE 
+    job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    -- avg donné par requête imbriquée
+    AND (job_.start_time - job_.submit_time) > (
+    SELECT 
+        AVG(job_.start_time - job_.submit_time)
+    FROM 
+        job_, users
+    WHERE 
+        job_.id_user = users.id_user
+        AND users.login = 'cmichel'
+        AND (job_.failed = 0 OR job_.exit_status = 0)
+        AND job_.start_time >= 1325376000
+        AND job_.start_time <= 1356998400 
+    GROUP BY users.login 
+    )
+GROUP BY users.login ;
+-- jobs en dessous de avg(attente), user cmichel, 2012
+SELECT 
+    users.login, COUNT(job_.id_job_)
+FROM 
+    job_, users
+WHERE 
+    job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    -- avg donné par requête imbriquée
+    AND (job_.start_time - job_.submit_time) < (
+    SELECT 
+        AVG(job_.start_time - job_.submit_time)
+    FROM 
+        job_, users
+    WHERE 
+        job_.id_user = users.id_user
+        AND users.login = 'cmichel'
+        AND (job_.failed = 0 OR job_.exit_status = 0)
+        AND job_.start_time >= 1325376000
+        AND job_.start_time <= 1356998400 
+    GROUP BY users.login 
+    )
+GROUP BY users.login ;
+-- jobs réussis, user cmichel, 2012, temps d'attente < 1 jour (86400)
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) < 86400
+GROUP BY users.login ;
+-- jobs réussis, user cmichel, 2012, temps d'attente entre 1 jour (86400) et 1 week (604800)
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) > 86400
+    AND (job_.start_time - job_.submit_time) < 604800
+GROUP BY users.login ;
+-- jobs réussis, user cmichel, 2012, temps d'attente > 1 week (604800)
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) > 604800
+GROUP BY users.login ;
+
+
