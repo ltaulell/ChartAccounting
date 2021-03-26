@@ -476,7 +476,11 @@ GROUP BY users.login ;
 SELECT users.login, 
     MAX(job_.start_time - job_.submit_time),
     AVG(job_.start_time - job_.submit_time),
-    MIN(job_.start_time - job_.submit_time)
+    -- MIN(job_.start_time - job_.submit_time) NE peut PAS être inférieur à 0
+    CASE
+        WHEN MIN(job_.start_time - job_.submit_time) < 0 THEN 0
+        ELSE MIN(job_.start_time - job_.submit_time)
+    END
 FROM 
     job_, users
 WHERE 
