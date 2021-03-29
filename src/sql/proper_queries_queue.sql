@@ -63,7 +63,7 @@ WHERE
     AND job_.start_time >= 1325376000
     AND job_.start_time <= 1356998400
 GROUP BY queues.queue_name ;
--- total jobs, queue r815lin128ib, 2012
+-- total jobs, queue r815lin128ib, 2012 (vérification, nograph)
 SELECT
     queues.queue_name,
     COUNT(job_.id_job_)
@@ -190,3 +190,4 @@ WHERE
     AND job_.start_time <= 1356998400
     AND job_.ru_wallclock > 18144000
 GROUP BY queues.queue_name ;
+

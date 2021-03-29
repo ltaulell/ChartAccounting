@@ -476,7 +476,7 @@ GROUP BY users.login ;
 SELECT users.login, 
     MAX(job_.start_time - job_.submit_time),
     AVG(job_.start_time - job_.submit_time),
-    -- MIN(job_.start_time - job_.submit_time) NE peut PAS être inférieur à 0
+    -- MIN(job_.start_time - job_.submit_time) NE devrait PAS être inférieur à 0
     CASE
         WHEN MIN(job_.start_time - job_.submit_time) < 0 THEN 0
         ELSE MIN(job_.start_time - job_.submit_time)
@@ -574,4 +574,92 @@ WHERE job_.id_user = users.id_user
     AND (job_.start_time - job_.submit_time) > 604800
 GROUP BY users.login ;
 
-
+-- Top Tens
+-- top ten used queues, by hours, user cmichel, 2012
+SELECT 
+    users.login, 
+    queues.queue_name, 
+    sum(job_.cpu) AS sum_cpu 
+FROM 
+    users, 
+    queues, 
+    job_ 
+WHERE 
+    job_.id_user = users.id_user 
+    AND users.login = 'cmichel' 
+    AND job_.id_queue = queues.id_queue 
+    AND (job_.failed = 0 OR job_.exit_status = 0) 
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY 
+    users.login, 
+    queues.queue_name 
+ORDER BY 
+    sum_cpu DESC 
+LIMIT 10 ;
+-- top ten used queues, by jobs, user cmichel, 2012
+SELECT 
+    users.login, 
+    queues.queue_name, 
+    count(job_.id_job_) AS sum_job 
+FROM 
+    users, 
+    queues, 
+    job_ 
+WHERE 
+    job_.id_user = users.id_user 
+    AND users.login = 'cmichel' 
+    AND job_.id_queue = queues.id_queue 
+    AND (job_.failed = 0 OR job_.exit_status = 0) 
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY 
+    users.login, 
+    queues.queue_name 
+ORDER BY 
+    sum_job DESC 
+LIMIT 10 ;
+-- top ten used hosts, by hours, user cmichel, 2012
+SELECT 
+    users.login, 
+    hosts.hostname, 
+    sum(job_.cpu) AS sum_cpu 
+FROM 
+    users, 
+    hosts, 
+    job_ 
+WHERE 
+    job_.id_user = users.id_user 
+    AND users.login = 'cmichel' 
+    AND job_.id_host = hosts.id_host 
+    AND (job_.failed = 0 OR job_.exit_status = 0) 
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY 
+    users.login, 
+    hosts.hostname 
+ORDER BY 
+    sum_cpu DESC 
+LIMIT 10 ;
+-- top ten used hosts, by jobs, user cmichel, 2012
+SELECT 
+    users.login, 
+    hosts.hostname, 
+    count(job_.id_job_) AS sum_job 
+FROM 
+    users, 
+    hosts, 
+    job_ 
+WHERE 
+    job_.id_user = users.id_user 
+    AND users.login = 'cmichel' 
+    AND job_.id_host = hosts.id_host 
+    AND (job_.failed = 0 OR job_.exit_status = 0) 
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY 
+    users.login, 
+    hosts.hostname 
+ORDER BY 
+    sum_job DESC 
+LIMIT 10 ;
