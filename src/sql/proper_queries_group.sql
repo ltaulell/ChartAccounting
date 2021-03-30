@@ -137,10 +137,25 @@ WHERE job_.id_groupe = groupes.id_groupe
 GROUP BY groupes.group_name ;
 
 -- TODO
--- memory usage
+-- memory usage (1, 4, 8, 16, 32, 64, 128+)
+SELECT
+    groupes.group_name,
+    MAX(job_.maxvmem) AS max_mem,
+    AVG(job_.maxvmem) AS avg_mem,
+    MIN(job_.maxvmem) AS min_mem
+FROM 
+    job_, groupes
+WHERE
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY groupes.group_name ;
 
 
--- slots usage
+
+-- slots usage (1, 2-4, 5-8, 9-16, 17-32, 33-64, 65-128, 128+)
 -- min, avg, max for slots, groupe chimie, 2012
 SELECT 
     groupes.group_name, 
@@ -155,7 +170,7 @@ WHERE job_.id_groupe = groupes.id_groupe
     AND job_.start_time <= 1356998400 
 GROUP BY groupes.group_name ;
 
--- temps d'attente
+-- temps d'attente (1h, 6h, 12h, 24h -> 1j+)
 
 
 -- Top Tens
