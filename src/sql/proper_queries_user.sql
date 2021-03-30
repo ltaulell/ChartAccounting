@@ -542,7 +542,7 @@ WHERE
     GROUP BY users.login 
     )
 GROUP BY users.login ;
--- jobs réussis, user cmichel, 2012, temps d'attente < 1 jour (86400)
+-- jobs réussis, user cmichel, 2012, temps d'attente < 1h (3600)
 SELECT users.login, COUNT(job_.id_job_)
 FROM job_, users
 WHERE job_.id_user = users.id_user
@@ -550,9 +550,42 @@ WHERE job_.id_user = users.id_user
     AND (job_.failed = 0 OR job_.exit_status = 0)
     AND job_.start_time >= 1325376000
     AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) < 3600
+GROUP BY users.login ;
+-- jobs réussis, user cmichel, 2012, temps d'attente entre 1h (3600) et 6h (21600)
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) > 3600
+    AND (job_.start_time - job_.submit_time) < 21600
+GROUP BY users.login ;
+-- jobs réussis, user cmichel, 2012, temps d'attente entre 6h (21600) et 12h (43200)
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) > 21600
+    AND (job_.start_time - job_.submit_time) < 43200
+GROUP BY users.login ;
+-- jobs réussis, user cmichel, 2012, temps d'attente entre 12h (43200) et 24h (86400)
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) > 43200
     AND (job_.start_time - job_.submit_time) < 86400
 GROUP BY users.login ;
--- jobs réussis, user cmichel, 2012, temps d'attente entre 1 jour (86400) et 1 week (604800)
+-- jobs réussis, user cmichel, 2012, temps d'attente > 1 jour (86400)
 SELECT users.login, COUNT(job_.id_job_)
 FROM job_, users
 WHERE job_.id_user = users.id_user
@@ -561,17 +594,6 @@ WHERE job_.id_user = users.id_user
     AND job_.start_time >= 1325376000
     AND job_.start_time <= 1356998400
     AND (job_.start_time - job_.submit_time) > 86400
-    AND (job_.start_time - job_.submit_time) < 604800
-GROUP BY users.login ;
--- jobs réussis, user cmichel, 2012, temps d'attente > 1 week (604800)
-SELECT users.login, COUNT(job_.id_job_)
-FROM job_, users
-WHERE job_.id_user = users.id_user
-    AND users.login = 'cmichel'
-    AND (job_.failed = 0 OR job_.exit_status = 0)
-    AND job_.start_time >= 1325376000
-    AND job_.start_time <= 1356998400
-    AND (job_.start_time - job_.submit_time) > 604800
 GROUP BY users.login ;
 
 -- Top Tens
