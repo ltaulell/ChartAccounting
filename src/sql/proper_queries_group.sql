@@ -559,8 +559,6 @@ WHERE
     AND (job_.start_time - job_.submit_time) > 86400
 GROUP BY groupes.group_name ;
 
-
-
 -- TODO
 -- Tops Tens
 

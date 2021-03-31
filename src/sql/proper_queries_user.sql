@@ -685,3 +685,39 @@ GROUP BY
 ORDER BY 
     sum_job DESC 
 LIMIT 10 ;
+-- top ten maxvmem
+SELECT
+    users.login, 
+    job_.maxvmem
+FROM 
+    job_, users
+WHERE
+    job_.id_user = users.id_user 
+    AND users.login = 'cmichel' 
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY 
+    users.login, 
+    job_.maxvmem
+ORDER BY 
+    job_.maxvmem DESC
+LIMIT 10 ;
+-- top ten temps d'attente
+SELECT
+    users.login, 
+    (job_.start_time - job_.submit_time) AS await
+FROM 
+    job_, users
+WHERE
+    job_.id_user = users.id_user 
+    AND users.login = 'cmichel' 
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY 
+    users.login, 
+    await
+ORDER BY 
+    await DESC
+LIMIT 10 ;
