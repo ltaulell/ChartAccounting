@@ -134,8 +134,7 @@ WHERE job_.id_groupe = groupes.id_groupe
     AND job_.ru_wallclock > 18144000
 GROUP BY groupes.group_name ;
 
--- TODO
--- memory usage (1, 4, 8, 16, 32, 64, 128+)
+-- memory usage (1Gi, 4, 8, 16, 32, 64, 128+)
 SELECT
     groupes.group_name,
     MAX(job_.maxvmem) AS max_mem,
@@ -287,8 +286,6 @@ WHERE
     AND job_.maxvmem > 137438953472
 GROUP BY groupes.group_name ;
 
-
-
 -- slots usage (1, 2-4, 5-8, 9-16, 17-32, 33-64, 65-128, 128+)
 -- min, avg, max for slots, groupe chimie, 2012
 SELECT 
@@ -298,7 +295,8 @@ SELECT
     max(job_.slots)
 FROM 
     job_, groupes 
-WHERE job_.id_groupe = groupes.id_groupe 
+WHERE 
+    job_.id_groupe = groupes.id_groupe 
     AND groupes.group_name = 'chimie' 
     AND (job_.failed = 0 OR job_.exit_status = 0) 
     AND job_.start_time >= 1325376000 
@@ -344,11 +342,227 @@ WHERE
         GROUP BY groupes.group_name
         )
 GROUP BY groupes.group_name ;
+-- nb jobs réussis, groupe chimie, 2012, slots = 1
+SELECT groupes.group_name, COUNT(job_.id_job_)
+FROM job_, groupes
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND job_.slots = 1
+GROUP BY groupes.group_name ;
+-- nb jobs réussis, groupe chimie, 2012, slots entre 2 et 4
+SELECT groupes.group_name, COUNT(job_.id_job_)
+FROM job_, groupes
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND job_.slots > 1
+    AND job_.slots <= 4
+GROUP BY groupes.group_name ;
+-- nb jobs réussis, groupe chimie, 2012, slots entre 5 et 8
+SELECT groupes.group_name, COUNT(job_.id_job_)
+FROM job_, groupes
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND job_.slots > 5
+    AND job_.slots <= 8
+GROUP BY groupes.group_name ;
+-- nb jobs réussis, groupe chimie, 2012, slots entre 9 et 16
+SELECT groupes.group_name, COUNT(job_.id_job_)
+FROM job_, groupes
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND job_.slots > 9
+    AND job_.slots <= 16
+GROUP BY groupes.group_name ;
+-- nb jobs réussis, groupe chimie, 2012, slots entre 17 et 32
+SELECT groupes.group_name, COUNT(job_.id_job_)
+FROM job_, groupes
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND job_.slots > 17
+    AND job_.slots <= 32
+GROUP BY groupes.group_name ;
+-- nb jobs réussis, groupe chimie, 2012, slots entre 33 et 64
+SELECT groupes.group_name, COUNT(job_.id_job_)
+FROM job_, groupes
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND job_.slots > 33
+    AND job_.slots <= 64
+GROUP BY groupes.group_name ;
+-- nb jobs réussis, groupe chimie, 2012, slots entre 65 et 128
+SELECT groupes.group_name, COUNT(job_.id_job_)
+FROM job_, groupes
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND job_.slots > 65
+    AND job_.slots <= 128
+GROUP BY groupes.group_name ;
+-- nb jobs réussis, groupe chimie, 2012, slots > 128
+SELECT groupes.group_name, COUNT(job_.id_job_)
+FROM job_, groupes
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND job_.slots > 128
+GROUP BY groupes.group_name ;
 
 -- temps d'attente (1h, 6h, 12h, 24h -> 1j+)
--- min, avg, max for await (start_time - submit_time), groupe chimie, 2012
+-- min, avg, max for attente (start_time - submit_time), groupe chimie, 2012
+SELECT 
+    groupes.group_name,
+    MAX(job_.start_time - job_.submit_time),
+    AVG(job_.start_time - job_.submit_time),
+    CASE
+        WHEN MIN(job_.start_time - job_.submit_time) < 0 THEN 0
+        ELSE MIN(job_.start_time - job_.submit_time)
+    END
+FROM 
+    job_, groupes 
+WHERE 
+    job_.id_groupe = groupes.id_groupe 
+    AND groupes.group_name = 'chimie' 
+    AND (job_.failed = 0 OR job_.exit_status = 0) 
+    AND job_.start_time >= 1325376000 
+    AND job_.start_time <= 1356998400 
+GROUP BY groupes.group_name ;
+-- jobs au dessus de avg(attente), groupe chimie, 2012
+SELECT groupes.group_name, COUNT(job_.id_job_)
+FROM job_, groupes
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) > (
+        SELECT 
+            AVG(job_.start_time - job_.submit_time)
+        FROM job_, groupes
+        WHERE
+            job_.id_groupe = groupes.id_groupe
+            AND groupes.group_name = 'chimie'
+            AND (job_.failed = 0 OR job_.exit_status = 0)
+            AND job_.start_time >= 1325376000
+            AND job_.start_time <= 1356998400
+        GROUP BY groupes.group_name
+        )
+GROUP BY groupes.group_name ;
+-- jobs en dessous de avg(attente), groupe chimie, 2012
+SELECT groupes.group_name, COUNT(job_.id_job_)
+FROM job_, groupes
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) < (
+        SELECT 
+            AVG(job_.start_time - job_.submit_time)
+        FROM job_, groupes
+        WHERE
+            job_.id_groupe = groupes.id_groupe
+            AND groupes.group_name = 'chimie'
+            AND (job_.failed = 0 OR job_.exit_status = 0)
+            AND job_.start_time >= 1325376000
+            AND job_.start_time <= 1356998400
+        GROUP BY groupes.group_name
+        )
+GROUP BY groupes.group_name ;
+-- jobs, groupe chimie, 2012, temps d'attente < 1h (3600)
+SELECT groupes.group_name, COUNT(job_.id_job_)
+FROM job_, groupes
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) < 3600
+GROUP BY groupes.group_name ;
+-- jobs, groupe chimie, 2012, temps d'attente entre 1h (3600) et 6h (21600)
+SELECT groupes.group_name, COUNT(job_.id_job_)
+FROM job_, groupes
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) > 3600
+    AND (job_.start_time - job_.submit_time) < 21600
+GROUP BY groupes.group_name ;
+-- jobs, groupe chimie, 2012, temps d'attente entre 6h (21600) et 12h (43200)
+SELECT groupes.group_name, COUNT(job_.id_job_)
+FROM job_, groupes
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) > 21600
+    AND (job_.start_time - job_.submit_time) < 43200
+GROUP BY groupes.group_name ;
+-- jobs, groupe chimie, 2012, temps d'attente entre 12h (43200) et 24h (86400)
+SELECT groupes.group_name, COUNT(job_.id_job_)
+FROM job_, groupes
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) > 43200
+    AND (job_.start_time - job_.submit_time) < 86400
+GROUP BY groupes.group_name ;
+-- jobs, groupe chimie, 2012, temps d'attente > 1 jour (86400)
+SELECT groupes.group_name, COUNT(job_.id_job_)
+FROM job_, groupes
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) > 86400
+GROUP BY groupes.group_name ;
 
--- Top Tens
+
+
+-- TODO
+-- Tops Tens
 
 
 
