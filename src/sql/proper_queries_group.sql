@@ -31,9 +31,10 @@ GROUP BY groupes.id_groupe ;
 -- min, avg, max for ru_wallclock, groupe chimie, 2012
 SELECT 
     groupes.group_name, 
-    min(job_.ru_wallclock),
-    avg(job_.ru_wallclock),
-    max(job_.ru_wallclock)
+    MIN(job_.ru_wallclock),
+    AVG(job_.ru_wallclock),
+    MAX(job_.ru_wallclock)::INTEGER
+    -- cast pour forcer la sortie (exemple)
 FROM 
     job_, groupes 
 WHERE job_.id_groupe = groupes.id_groupe 
@@ -137,7 +138,7 @@ GROUP BY groupes.group_name ;
 -- memory usage (1Gi, 4, 8, 16, 32, 64, 128+)
 SELECT
     groupes.group_name,
-    MAX(job_.maxvmem) AS max_mem,
+    MAX(job_.maxvmem)::INTEGER AS max_mem,
     AVG(job_.maxvmem) AS avg_mem,
     MIN(job_.maxvmem) AS min_mem
 FROM 
@@ -290,9 +291,9 @@ GROUP BY groupes.group_name ;
 -- min, avg, max for slots, groupe chimie, 2012
 SELECT 
     groupes.group_name, 
-    min(job_.slots),
-    avg(job_.slots),
-    max(job_.slots)
+    MIN(job_.slots),
+    AVG(job_.slots),
+    MAX(job_.slots)
 FROM 
     job_, groupes 
 WHERE 
@@ -561,7 +562,130 @@ GROUP BY groupes.group_name ;
 
 -- TODO
 -- Tops Tens
+-- top ten users, by hours, groupe chimie, 2012
 
+-- top ten users, by jobs,  groupe chimie, 2012
 
-
+-- top ten used queues, by hours, groupe chimie, 2012
+SELECT 
+    groupes.group_name, 
+    queues.queue_name, 
+    sum(job_.cpu) / 3600 AS sum_cpu 
+FROM 
+    groupes, 
+    queues, 
+    job_ 
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND job_.id_queue = queues.id_queue 
+    AND (job_.failed = 0 OR job_.exit_status = 0) 
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY 
+    groupes.group_name, 
+    queues.queue_name 
+ORDER BY 
+    sum_cpu DESC 
+LIMIT 10 ;
+-- top ten used queues, by jobs, groupe chimie, 2012
+SELECT 
+    groupes.group_name, 
+    queues.queue_name, 
+    count(job_.id_job_) AS sum_job 
+FROM 
+    groupes, 
+    queues, 
+    job_ 
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND job_.id_queue = queues.id_queue 
+    AND (job_.failed = 0 OR job_.exit_status = 0) 
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY 
+    groupes.group_name, 
+    queues.queue_name 
+ORDER BY 
+    sum_job DESC 
+LIMIT 10 ;
+-- top ten used queues, by hours, groupe chimie, 2012
+SELECT 
+    groupes.group_name, 
+    hosts.hostname, 
+    sum(job_.cpu) / 3600 AS sum_cpu 
+FROM 
+    groupes, 
+    hosts, 
+    job_ 
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND job_.id_host = hosts.id_host 
+    AND (job_.failed = 0 OR job_.exit_status = 0) 
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY 
+    groupes.group_name, 
+    hosts.hostname 
+ORDER BY 
+    sum_cpu DESC 
+LIMIT 10 ;
+-- top ten used queues, by jobs, groupe chimie, 2012
+SELECT 
+    groupes.group_name, 
+    hosts.hostname, 
+    count(job_.id_job_) AS sum_job 
+FROM 
+    groupes, 
+    hosts, 
+    job_ 
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND job_.id_host = hosts.id_host 
+    AND (job_.failed = 0 OR job_.exit_status = 0) 
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY 
+    groupes.group_name, 
+    hosts.hostname 
+ORDER BY 
+    sum_job DESC 
+LIMIT 10 ;
+-- top ten maxvmem
+SELECT 
+    groupes.group_name, 
+    job_.maxvmem
+FROM job_, groupes
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY 
+    groupes.group_name, 
+    job_.maxvmem 
+ORDER BY 
+    job_.maxvmem DESC
+LIMIT 10 ;
+-- top ten temps d'attente (en heures)
+SELECT 
+    groupes.group_name, 
+    (job_.start_time - job_.submit_time) / 3600 AS await
+FROM job_, groupes
+WHERE 
+    job_.id_groupe = groupes.id_groupe
+    AND groupes.group_name = 'chimie'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY 
+    groupes.group_name, 
+    await 
+ORDER BY 
+    await DESC
+LIMIT 10 ;
 
