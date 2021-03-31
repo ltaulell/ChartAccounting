@@ -601,7 +601,7 @@ GROUP BY users.login ;
 SELECT 
     users.login, 
     queues.queue_name, 
-    sum(job_.cpu) AS sum_cpu 
+    sum(job_.cpu) / 3600 AS sum_cpu 
 FROM 
     users, 
     queues, 
@@ -645,7 +645,7 @@ LIMIT 10 ;
 SELECT 
     users.login, 
     hosts.hostname, 
-    sum(job_.cpu) AS sum_cpu 
+    sum(job_.cpu) / 3600 AS sum_cpu 
 FROM 
     users, 
     hosts, 
@@ -703,10 +703,10 @@ GROUP BY
 ORDER BY 
     job_.maxvmem DESC
 LIMIT 10 ;
--- top ten temps d'attente
+-- top ten temps d'attente (en heures)
 SELECT
     users.login, 
-    (job_.start_time - job_.submit_time) AS await
+    (job_.start_time - job_.submit_time) / 3600 AS await
 FROM 
     job_, users
 WHERE
