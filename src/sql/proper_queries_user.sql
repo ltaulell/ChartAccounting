@@ -476,7 +476,7 @@ GROUP BY users.login ;
 SELECT users.login, 
     MAX(job_.start_time - job_.submit_time),
     AVG(job_.start_time - job_.submit_time),
-    -- MIN(job_.start_time - job_.submit_time) NE peut PAS être inférieur à 0
+    -- MIN(job_.start_time - job_.submit_time) NE devrait PAS être inférieur à 0
     CASE
         WHEN MIN(job_.start_time - job_.submit_time) < 0 THEN 0
         ELSE MIN(job_.start_time - job_.submit_time)
@@ -542,7 +542,7 @@ WHERE
     GROUP BY users.login 
     )
 GROUP BY users.login ;
--- jobs réussis, user cmichel, 2012, temps d'attente < 1 jour (86400)
+-- jobs réussis, user cmichel, 2012, temps d'attente < 1h (3600)
 SELECT users.login, COUNT(job_.id_job_)
 FROM job_, users
 WHERE job_.id_user = users.id_user
@@ -550,9 +550,42 @@ WHERE job_.id_user = users.id_user
     AND (job_.failed = 0 OR job_.exit_status = 0)
     AND job_.start_time >= 1325376000
     AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) < 3600
+GROUP BY users.login ;
+-- jobs réussis, user cmichel, 2012, temps d'attente entre 1h (3600) et 6h (21600)
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) > 3600
+    AND (job_.start_time - job_.submit_time) < 21600
+GROUP BY users.login ;
+-- jobs réussis, user cmichel, 2012, temps d'attente entre 6h (21600) et 12h (43200)
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) > 21600
+    AND (job_.start_time - job_.submit_time) < 43200
+GROUP BY users.login ;
+-- jobs réussis, user cmichel, 2012, temps d'attente entre 12h (43200) et 24h (86400)
+SELECT users.login, COUNT(job_.id_job_)
+FROM job_, users
+WHERE job_.id_user = users.id_user
+    AND users.login = 'cmichel'
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+    AND (job_.start_time - job_.submit_time) > 43200
     AND (job_.start_time - job_.submit_time) < 86400
 GROUP BY users.login ;
--- jobs réussis, user cmichel, 2012, temps d'attente entre 1 jour (86400) et 1 week (604800)
+-- jobs réussis, user cmichel, 2012, temps d'attente > 1 jour (86400)
 SELECT users.login, COUNT(job_.id_job_)
 FROM job_, users
 WHERE job_.id_user = users.id_user
@@ -561,17 +594,130 @@ WHERE job_.id_user = users.id_user
     AND job_.start_time >= 1325376000
     AND job_.start_time <= 1356998400
     AND (job_.start_time - job_.submit_time) > 86400
-    AND (job_.start_time - job_.submit_time) < 604800
 GROUP BY users.login ;
--- jobs réussis, user cmichel, 2012, temps d'attente > 1 week (604800)
-SELECT users.login, COUNT(job_.id_job_)
-FROM job_, users
-WHERE job_.id_user = users.id_user
-    AND users.login = 'cmichel'
+
+-- Top Tens
+-- top ten used queues, by hours, user cmichel, 2012
+SELECT 
+    users.login, 
+    queues.queue_name, 
+    sum(job_.cpu) / 3600 AS sum_cpu 
+FROM 
+    users, 
+    queues, 
+    job_ 
+WHERE 
+    job_.id_user = users.id_user 
+    AND users.login = 'cmichel' 
+    AND job_.id_queue = queues.id_queue 
+    AND (job_.failed = 0 OR job_.exit_status = 0) 
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY 
+    users.login, 
+    queues.queue_name 
+ORDER BY 
+    sum_cpu DESC 
+LIMIT 10 ;
+-- top ten used queues, by jobs, user cmichel, 2012
+SELECT 
+    users.login, 
+    queues.queue_name, 
+    count(job_.id_job_) AS sum_job 
+FROM 
+    users, 
+    queues, 
+    job_ 
+WHERE 
+    job_.id_user = users.id_user 
+    AND users.login = 'cmichel' 
+    AND job_.id_queue = queues.id_queue 
+    AND (job_.failed = 0 OR job_.exit_status = 0) 
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY 
+    users.login, 
+    queues.queue_name 
+ORDER BY 
+    sum_job DESC 
+LIMIT 10 ;
+-- top ten used hosts, by hours, user cmichel, 2012
+SELECT 
+    users.login, 
+    hosts.hostname, 
+    sum(job_.cpu) / 3600 AS sum_cpu 
+FROM 
+    users, 
+    hosts, 
+    job_ 
+WHERE 
+    job_.id_user = users.id_user 
+    AND users.login = 'cmichel' 
+    AND job_.id_host = hosts.id_host 
+    AND (job_.failed = 0 OR job_.exit_status = 0) 
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY 
+    users.login, 
+    hosts.hostname 
+ORDER BY 
+    sum_cpu DESC 
+LIMIT 10 ;
+-- top ten used hosts, by jobs, user cmichel, 2012
+SELECT 
+    users.login, 
+    hosts.hostname, 
+    count(job_.id_job_) AS sum_job 
+FROM 
+    users, 
+    hosts, 
+    job_ 
+WHERE 
+    job_.id_user = users.id_user 
+    AND users.login = 'cmichel' 
+    AND job_.id_host = hosts.id_host 
+    AND (job_.failed = 0 OR job_.exit_status = 0) 
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY 
+    users.login, 
+    hosts.hostname 
+ORDER BY 
+    sum_job DESC 
+LIMIT 10 ;
+-- top ten maxvmem
+SELECT
+    users.login, 
+    job_.maxvmem
+FROM 
+    job_, users
+WHERE
+    job_.id_user = users.id_user 
+    AND users.login = 'cmichel' 
     AND (job_.failed = 0 OR job_.exit_status = 0)
     AND job_.start_time >= 1325376000
     AND job_.start_time <= 1356998400
-    AND (job_.start_time - job_.submit_time) > 604800
-GROUP BY users.login ;
-
-
+GROUP BY 
+    users.login, 
+    job_.maxvmem
+ORDER BY 
+    job_.maxvmem DESC
+LIMIT 10 ;
+-- top ten temps d'attente (en heures)
+SELECT
+    users.login, 
+    (job_.start_time - job_.submit_time) / 3600 AS await
+FROM 
+    job_, users
+WHERE
+    job_.id_user = users.id_user 
+    AND users.login = 'cmichel' 
+    AND (job_.failed = 0 OR job_.exit_status = 0)
+    AND job_.start_time >= 1325376000
+    AND job_.start_time <= 1356998400
+GROUP BY 
+    users.login, 
+    await
+ORDER BY 
+    await DESC
+LIMIT 10 ;
