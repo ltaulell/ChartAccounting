@@ -105,3 +105,10 @@ create table IF NOT EXISTS job_ (
     maxvmem real,
     PRIMARY KEY (id_queue, id_host, id_user, job_id, start_time, end_time)
     );
+
+-- table 'last_insertion'
+-- CREATE TABLE IF NOT EXISTS last_insertion (
+--    id_insertion bigserial PRIMARY KEY,
+--    octet_position bigint NOT NULL,
+--    date_last timestamp without time zone NOT NULL
+--    );
