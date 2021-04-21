@@ -14,8 +14,12 @@ go easy, go simple.
 
 TODO/FIXME:
 
-- find a way around transaction(s) ?
-    => done (une seul conn)
+- use last_offset from history to seek() csv file -> speedup on restart
+    - do not save last_offset at -each- line, save @end of process
+    -> howto @end of process ?
+    - rewrite the read procedure to include offset
+    -> test_read_tell.py
+- get rid of decomment() by ricochet
 
 - yielder/getter ? -> multiprocessing inserts ? (maybe faster?)
     https://www.psycopg.org/docs/usage.html#thread-safety
@@ -176,6 +180,10 @@ if __name__ == '__main__':
     # conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
     # conn.set_session(isolation_level=psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE, autocommit=True)
     log.debug(conn)
+
+    # get last offset (and test conn)
+    # sql = ("SELECT last_offset_position FROM history WHERE id_insertion = (SELECT MAX(id_insertion) FROM history);")
+    # last_offset = execute_sql(conn, sql, [])
 
     with open(fichier, "r", encoding='latin1') as csvfile:
         # encodings: us-ascii < latin1 < utf-8
