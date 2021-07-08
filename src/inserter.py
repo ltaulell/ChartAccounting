@@ -65,15 +65,6 @@ def get_args(helper=False):
         return parser.parse_args()
 
 
-def decomment(fichiercsv):
-    """ do not yield row containing '#' at first place
-    BUT, there can be '#' in actual job_name ! (/o\ users...) """
-    """ TODO/FIXME enclose in try/except with UnicodeDecodeError, and pass on """
-    for row in fichiercsv:
-        if not row.startswith('#'):
-            yield row
-
-
 def execute_sql(connexion, commande, payload, commit=False):
     """ execute commande, always return id
     SQL inserts MUST returning ids, else fetchone() will fail """
@@ -146,6 +137,34 @@ def load_yaml_file(yamlfile):
         sys.exit(1)
 
 
+def lire_fichier(fichier, offset=0):
+    """ try read without direct csv.DictReader and use an offset """
+    try:
+        with open(fichier, "rt", encoding='latin1') as csvfile:
+            # encodings: us-ascii < latin1 < utf-8
+            # but read with 'latin1' because of
+            # "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xc3..."
+
+            log.debug('current offset: {}'.format(offset))
+
+            if offset != 0:
+                csvfile.seek(offset, 0)  # wc match ok
+
+            ligne = csvfile.readline()
+
+            while ligne:
+                offset = csvfile.tell()
+
+                if not ligne.startswith('#'):  # decomment()
+                    reader = csv.DictReader([ligne], fieldnames=HEADER_LIST, delimiter=':')
+                    yield offset, reader
+
+                ligne = csvfile.readline()
+
+    except IndexError:
+        log.critical('cannot read {}, not found'.format(csvfile))
+
+
 if __name__ == '__main__':
     """
         pd.read_csv autodetecte des types qui sont ensuite poussés vers la base,
@@ -182,15 +201,11 @@ if __name__ == '__main__':
     log.debug(conn)
 
     # get last offset (and test conn)
-    # sql = ("SELECT last_offset_position FROM history WHERE id_insertion = (SELECT MAX(id_insertion) FROM history);")
-    # last_offset = execute_sql(conn, sql, [])
+    sql = ("SELECT last_offset_position FROM history WHERE id_insertion = (SELECT MAX(id_insertion) FROM history);")
+    last_offset = execute_sql(conn, sql, [])
 
-    with open(fichier, "r", encoding='latin1') as csvfile:
-        # encodings: us-ascii < latin1 < utf-8
-        # but read with 'latin1' because of
-        # "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xc3..."
-        reader = csv.DictReader(decomment(csvfile), fieldnames=HEADER_LIST, delimiter=':')
-        for line in reader:
+    for offset, datarow in lire_fichier(fichier, offset=last_offset):
+        for line in datarow:
             log.debug('{}, {}, {}, {}'.format(line['qname'], line['host'], line['group'], line['cpu']))
 
             with conn:
@@ -327,6 +342,9 @@ if __name__ == '__main__':
 
                     jobCommit = execute_sql(conn, sql, data, commit=True)
                     log.info('commited: {}, {}, {}'.format(line['job_id'], line['qname'], line['host']))
+
+                    # add offset to database
+                    id_offset = select_or_insert(conn, table='history', id_name='id_insertion', name='last_offset_position', payload=[offset])
 
                 else:
                     log.info('job {} already exist in database'.format(line['job_id']))
