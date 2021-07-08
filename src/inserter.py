@@ -37,6 +37,7 @@ import csv
 import sys
 import psycopg2
 import yaml
+import datetime as dt
 
 import config
 
@@ -345,8 +346,10 @@ if __name__ == '__main__':
                     log.info('commited: {}, {}, {}'.format(line['job_id'], line['qname'], line['host']))
 
                     # add offset to database
-                    sql = ("""INSERT INTO history(last_offset_position) VALUES(%s) RETURNING id_insertion; """)
-                    data = [offset]
+                    date_insert = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    sql = ("""INSERT INTO history(last_offset_position, date_insert) 
+                        VALUES(%s, %s) RETURNING id_insertion; """)
+                    data = [offset, date_insert]
                     insertCommit = execute_sql(conn, sql, data, commit=True)
 
                 else:

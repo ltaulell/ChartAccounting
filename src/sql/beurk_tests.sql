@@ -20,7 +20,8 @@ ALTER TABLE job_ ALTER COLUMN mem DROP NOT NULL;
 ALTER TABLE job_ ALTER COLUMN io DROP NOT NULL;
 ALTER TABLE job_ ALTER COLUMN maxvmem DROP NOT NULL;
 
-INSERT INTO history(last_offset_position) VALUES(%s) RETURNING id_insertion;
+-- WITH date_insert AS (SELECT CURRENT_TIMESTAMP)
+-- INSERT INTO history(last_offset_position, date_insert) VALUES(%s, %s) RETURNING id_insertion;
 
 -- utiliser explain, pour les query plan
 -- pour voir où ça bouffe du temps
