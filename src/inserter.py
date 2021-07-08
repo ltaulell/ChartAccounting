@@ -15,16 +15,11 @@ go easy, go simple.
 TODO/FIXME:
 
 - use last_offset from history to seek() csv file -> speedup on restart
-    - do not save last_offset at -each- line, save @end of process
+    - do not save last_offset at -each- line? save @end of process? NO! each line!
     -> howto @end of process ?
-    - rewrite the read procedure to include offset
-    -> test_read_tell.py
-- get rid of decomment() by ricochet
-
-- yielder/getter ? -> multiprocessing inserts ? (maybe faster?)
-    https://www.psycopg.org/docs/usage.html#thread-safety
-    https://www.psycopg.org/docs/advanced.html#green-support
-    => bof
+    - rewrite the read procedure to include offset <- DONE
+    -> test_read_tell.py <- OK
+- get rid of decomment() by ricochet <- OK
 
 - except(s)
     https://www.psycopg.org/docs/errors.html
