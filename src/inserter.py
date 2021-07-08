@@ -192,7 +192,7 @@ if __name__ == '__main__':
     METAGROUPES = load_yaml_file(METAGROUPES_FILE)
 
     # prepare la config locale pgsql
-    param_conn_db = config.parserIni(filename='infodb.ini', section='postgresql')
+    param_conn_db = config.parserIni(filename='infodb.ini', section='insertion')
     log.debug(param_conn_db)
 
     conn = psycopg2.connect(**param_conn_db)
@@ -202,7 +202,8 @@ if __name__ == '__main__':
 
     # get last offset (and test conn)
     sql = ("SELECT last_offset_position FROM history WHERE id_insertion = (SELECT MAX(id_insertion) FROM history);")
-    last_offset = execute_sql(conn, sql, [])
+    res = execute_sql(conn, sql, [])
+    last_offset = int(res[0])
 
     for offset, datarow in lire_fichier(fichier, offset=last_offset):
         for line in datarow:
@@ -344,7 +345,9 @@ if __name__ == '__main__':
                     log.info('commited: {}, {}, {}'.format(line['job_id'], line['qname'], line['host']))
 
                     # add offset to database
-                    id_offset = select_or_insert(conn, table='history', id_name='id_insertion', name='last_offset_position', payload=[offset])
+                    sql = ("""INSERT INTO history(last_offset_position) VALUES(%s) RETURNING id_insertion; """)
+                    data = [offset]
+                    insertCommit = execute_sql(conn, sql, data, commit=True)
 
                 else:
                     log.info('job {} already exist in database'.format(line['job_id']))
