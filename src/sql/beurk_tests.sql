@@ -23,6 +23,16 @@ ALTER TABLE job_ ALTER COLUMN maxvmem DROP NOT NULL;
 -- WITH date_insert AS (SELECT CURRENT_TIMESTAMP)
 -- INSERT INTO history(last_offset_position, date_insert) VALUES(%s, %s) RETURNING id_insertion;
 
+sql = ("""INSERT INTO history(last_offset_position, date_insert) 
+                        VALUES(%s, %s) RETURNING id_insertion; """)
+
+# data = [id, offset, date_insert]
+("""UPDATE history 
+SET last_offset_position = %s, date_insert = %s
+WHERE history.id_insertion = 0 ;""")
+
+
+
 -- utiliser explain, pour les query plan
 -- pour voir où ça bouffe du temps
 
